@@ -1,7 +1,8 @@
 on:
-  workflow_dispatch:
-  schedule:
+  #workflow_dispatch:
+  #schedule:
   #- cron: "0 11 * * *"
+  workflow_dispatch:
 
 jobs:
   build:
