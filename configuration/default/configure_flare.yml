@@ -1,25 +1,22 @@
 s3:
   drivers:
-    endpoint: s3.flare-forecast.org
-    bucket: drivers/noaa/gefs-v12-reprocess
-  inflow_drivers:
-    endpoint: s3.flare-forecast.org
-    bucket: drivers/inflow/alex_v2/parquet
+    endpoint: renc.osn.xsede.org
+    bucket: bio230121-bucket01/flare/drivers/met/gefs-v12
   targets:
-    endpoint: s3.flare-forecast.org
-    bucket: targets/alex_v2
+    endpoint: renc.osn.xsede.org
+    bucket: bio230121-bucket01/flare/targets/ALEX
   forecasts:
-    endpoint: s3.flare-forecast.org
-    bucket: forecasts
+    endpoint: renc.osn.xsede.org
+    bucket: bio230121-bucket01/flare/forecasts/netcdf
   forecasts_parquet:
-    endpoint: s3.flare-forecast.org
-    bucket: forecasts/parquet
+    endpoint: renc.osn.xsede.org
+    bucket: bio230121-bucket01/flare/forecasts/parquet
   warm_start:
-    endpoint: s3.flare-forecast.org
-    bucket: restart/alex_v2
+    endpoint: renc.osn.xsede.org
+    bucket: bio230121-bucket01/flare/restart
   scores:
-    endpoint: s3.flare-forecast.org
-    bucket: scores/parquet
+    endpoint: renc.osn.xsede.org
+    bucket: bio230121-bucket01/flare/scores/parquet
 location:
    site_id: ALEX
    name: Lake Alexandrina
@@ -68,6 +65,7 @@ met:
    local_directory: drivers/noaa/gefs-v12/stage2/parquet
    observed_met_filename: ALEX-targets-insitu.csv
    use_ler_vars: FALSE
+   forecast_lag_days: 1
 uncertainty:
    observation: TRUE
    process: TRUE

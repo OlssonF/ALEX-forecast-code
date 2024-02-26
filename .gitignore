@@ -1,3 +1,15 @@
+flare_tempdir/*
+forecasts/*
+data_processed/*
+data_raw/*
+drivers/*
+analysis/*
+automation/*.log
+restart/*
+targets/*
+scores/*
+
+
 # History files
 .Rhistory
 .Rapp.history
@@ -37,5 +49,3 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
-
-data_raw/DataSetExport-Water Temp.Best Available--Continuous@A4261133-20220518222148.csv
