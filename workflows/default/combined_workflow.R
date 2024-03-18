@@ -7,15 +7,18 @@ forecast_site <- "ALEX"
 configure_run_file <- "configure_run.yml"
 config_set_name <- "default"
 
+fresh_run <- TRUE
+
 Sys.setenv("AWS_DEFAULT_REGION" = "renc",
            "AWS_S3_ENDPOINT" = "osn.xsede.org",
            "USE_HTTPS" = TRUE)
 
-
-
 message("Checking for NOAA forecasts")
 
 config <- FLAREr::set_configuration(configure_run_file,lake_directory, config_set_name = config_set_name)
+
+if(fresh_run) unlink(file.path(lake_directory, "restart", "ALEX", config$run_config$sim_name, configure_run_file))
+
 
 download.file(url = "https://water.data.sa.gov.au/Export/DataSet?DataSet=Water%20Temp.Best%20Available--Continuous%40A4261133&DateRange=Days30&ExportFormat=csv&Compressed=false&RoundData=False&Unit=degC&Timezone=9.5&_=1668874574781",
               destfile = file.path(lake_directory, "data_raw", "current_water_temp.csv"))
@@ -66,6 +69,10 @@ while(noaa_ready){
                               configure_run_file = configure_run_file,
                               config_set_name = config_set_name)
   
+  forecast_start_datetime <- lubridate::as_datetime(config$run_config$forecast_start_datetime) + lubridate::days(1)
+  start_datetime <- lubridate::as_datetime(config$run_config$forecast_start_datetime) - lubridate::days(5) ## SET LONGER LOOK BACK FOR DATA
+  restart_file <- paste0(config$location$site_id,"-", (lubridate::as_date(forecast_start_datetime)- days(1)), "-",config$run_config$sim_name ,".nc")
+  
   FLAREr::update_run_config2(lake_directory = lake_directory,
                              configure_run_file = configure_run_file, 
                              restart_file = basename(output$restart_file), 
@@ -82,7 +89,7 @@ while(noaa_ready){
                              endpoint = config$s3$warm_start$endpoint,
                              use_https = TRUE)
   
-  RCurl::url.exists("https://hc-ping.com/31c3e142-8f8c-42ae-9edc-d277adb94b31", timeout = 5)
+  #RCurl::url.exists("https://hc-ping.com/31c3e142-8f8c-42ae-9edc-d277adb94b31", timeout = 5)
   
   noaa_ready <- FLAREr::check_noaa_present_arrow(lake_directory,
                                                  configure_run_file,

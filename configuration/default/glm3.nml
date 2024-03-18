@@ -107,6 +107,7 @@
    rad_mode    = 1
    cloud_mode  = 4
    sw_factor = 1.0
+   lw_factor = 1.3
    meteo_fl    = 'met_hourly_AlexSY.csv'
   !meteo_fl    = 'met_Alex_NetLW.csv'
    wind_factor = 1.00

@@ -25,10 +25,11 @@ location:
 da_setup:
     da_method: enkf
     par_fit_method: perturb_const
-    ensemble_size:  256
+    ensemble_size:  10
+    localization_distance: 2 #distance in meters were covariances in the model error are used
     no_negative_states: TRUE
     assimilate_first_step: FALSE
-    use_obs_constraint: TRUE
+    use_obs_constraint: FALSE
     obs_filename: ALEX-targets-insitu.csv
 model_settings:
    ncore: 4
