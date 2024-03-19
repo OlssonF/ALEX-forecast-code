@@ -20,24 +20,31 @@ config <- FLAREr::set_configuration(configure_run_file,lake_directory, config_se
 if(fresh_run) unlink(file.path(lake_directory, "restart", "ALEX", config$run_config$sim_name, configure_run_file))
 
 
-download.file(url = "https://water.data.sa.gov.au/Export/DataSet?DataSet=Water%20Temp.Best%20Available--Continuous%40A4261133&DateRange=Days30&ExportFormat=csv&Compressed=false&RoundData=False&Unit=degC&Timezone=9.5&_=1668874574781",
+download.file(url = "https://water.data.sa.gov.au/Export/BulkExport?DateRange=Years1&TimeZone=9.5&Calendar=CALENDARYEAR&Interval=PointsAsRecorded&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Water%20Temp.Best%20Available--Continuous%40A4261133&Datasets[0].Calculation=Instantaneous&Datasets[0].UnitId=169&Datasets[1].DatasetName=EC%20Corr.Best%20Available%40A4261133&Datasets[1].Calculation=Instantaneous&Datasets[1].UnitId=305&_=1710853418800",
+                # "https://water.data.sa.gov.au/Export/DataSet?DataSet=Water%20Temp.Best%20Available--Continuous%40A4261133&DateRange=Years1&ExportFormat=csv&Compressed=false&RoundData=False&Unit=degC&Timezone=9.5&_=1668874574781",
               destfile = file.path(lake_directory, "data_raw", "current_water_temp.csv"))
 
 cleaned_insitu_file <- file.path(config$file_path$qaqc_data_directory, paste0(config$location$site_id, "-targets-insitu.csv"))
-#readr::read_csv(file.path(lake_directory, "data_raw", "current_water_temp.csv"), skip = 1, show_col_types = FALSE) |>
-readr::read_csv(file.path(lake_directory, "data_raw", "current_water_temp.csv"), skip = 5, show_col_types = FALSE, col_names = c('Timestamp (UTC+09:30)', 'Value (°C)')) |> 
-  rename(time = `Timestamp (UTC+09:30)`,
-         observed = `Value (°C)`) |> 
-  select(time, observed) |> 
+
+readr::read_csv(file.path(lake_directory, "data_raw", "current_water_temp.csv"), 
+                skip = 5, show_col_types = FALSE, 
+                col_names = c('time','Value_temperature', 'Value_EC')) |> 
+  # simple conversion to salt
+  mutate(Value_salt = oce::swSCTp(conductivity = Value_EC/1000,
+                                  temperature = Value_temperature, 
+                                  conductivityUnit = 'mS/cm')) |> 
+  select(-Value_EC) |> 
+  pivot_longer(names_to = 'variable', names_prefix = 'Value_',
+               cols = starts_with('Value'), 
+               values_to = 'observed') |> 
   mutate(time = lubridate::force_tz(time, tzone = "Etc/GMT+9"),
          time = time - lubridate::minutes(30),
          time = lubridate::with_tz(time, tzone = "UTC"),
          date = lubridate::as_date(time),
          hour = lubridate::hour(time)) |>
-  group_by(date, hour) |> 
+  group_by(date, hour, variable) |> 
   summarize(observation = mean(observed, na.rm = TRUE), .groups = "drop") |> 
-  mutate(variable = "temperature",
-         depth = 0.5,
+  mutate(depth = 0.5,
          site_id = config$location$site_id,
          datetime = lubridate::as_datetime(date) + lubridate::hours(hour)) |> 
   filter(hour == 0) |> 
