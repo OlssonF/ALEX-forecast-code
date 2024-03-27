@@ -110,9 +110,9 @@ while(noaa_ready){
   
   
   # Generate inflow forecast
-  source(file.path('workflows', config_set_name,'run_inflow_forecast.R'))
+  source(file.path('workflows', config_set_name,'run_inflow_xgboostforecast.R'))
   
-  
+  # run FLARE forecast
   output <- FLAREr::run_flare(lake_directory = lake_directory,
                               configure_run_file = configure_run_file,
                               config_set_name = config_set_name)

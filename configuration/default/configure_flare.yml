@@ -59,7 +59,7 @@ default_init:
 inflow:
    include_inflow: TRUE
    use_forecasted_inflow: TRUE
-   forecast_inflow_model: DOY_inflow
+   forecast_inflow_model: xgboost_inflow
    observed_filename: ALEX-targets-inflow.csv
    inflow_variables: [time, FLOW, TEMP, SALT] # check this if it's not working
    use_ler_vars: FALSE

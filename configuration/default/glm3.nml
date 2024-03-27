@@ -127,7 +127,7 @@
    strmbd_slope   =  4.0
    strmbd_drag    =  0.0160
    inflow_factor  =  1.0
-   inflow_fl      = 'DOY_inflow_forecast.csv'
+   inflow_fl      = 'xgboost_inflow_forecast.csv'
    inflow_varnum  =  3
    inflow_vars    = 'FLOW','TEMP','SALT'
 /
