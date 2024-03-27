@@ -19,20 +19,25 @@ config <- FLAREr::set_configuration(configure_run_file,lake_directory, config_se
 
 if(fresh_run) unlink(file.path(lake_directory, "restart", "ALEX", config$run_config$sim_name, configure_run_file))
 
-
-download.file(url = "https://water.data.sa.gov.au/Export/BulkExport?DateRange=Years1&TimeZone=9.5&Calendar=CALENDARYEAR&Interval=PointsAsRecorded&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Water%20Temp.Best%20Available--Continuous%40A4261133&Datasets[0].Calculation=Instantaneous&Datasets[0].UnitId=169&Datasets[1].DatasetName=EC%20Corr.Best%20Available%40A4261133&Datasets[1].Calculation=Instantaneous&Datasets[1].UnitId=305&_=1710853418800",
-              destfile = file.path(lake_directory, "data_raw", "current_water_temp.csv"))
+# # In-situ lake level, water temp, salinity (EC)
+# water level data is height above sea level
+# height of bottom of ALEX (per glm.nml) = -5.3 m
+# In situ WQ data
+options(timeout=100)
+download.file(url = paste0("https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=2020-01-01%2000%3A00&EndTime=", Sys.Date(), "%2000%3A00&TimeZone=0&Calendar=CALENDARYEAR&Interval=PointsAsRecorded&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Lake%20Level.Best%20Available--Continuous%40A4261133&Datasets[0].Calculation=Instantaneous&Datasets[0].UnitId=82&Datasets[1].DatasetName=EC%20Corr.Best%20Available%40A4261133&Datasets[1].Calculation=Instantaneous&Datasets[1].UnitId=305&Datasets[2].DatasetName=Water%20Temp.Best%20Available--Continuous%40A4261133&Datasets[2].Calculation=Instantaneous&Datasets[2].UnitId=169&_=1711554907800"),
+              destfile = file.path(lake_directory, "data_raw", "current_insitu.csv"))
 
 cleaned_insitu_file <- file.path(config$file_path$qaqc_data_directory, paste0(config$location$site_id, "-targets-insitu.csv"))
 
-readr::read_csv(file.path(lake_directory, "data_raw", "current_water_temp.csv"), 
+readr::read_csv(file.path(lake_directory, "data_raw", "current_insitu.csv"), 
                 skip = 5, show_col_types = FALSE, 
-                col_names = c('time','Value_temperature', 'Value_EC')) |> 
+                col_names = c('time','Value_level', 'Value_temperature', 'Value_EC')) |> 
   # simple conversion to salt
   mutate(Value_salt = oce::swSCTp(conductivity = Value_EC/1000,
                                   temperature = Value_temperature, 
-                                  conductivityUnit = 'mS/cm')) |> 
-  select(-Value_EC) |> 
+                                  conductivityUnit = 'mS/cm'),
+         Value_depth = 5.3 + Value_level) |> # 5.3 is the height 
+  select(-Value_EC, -Value_level) |> 
   pivot_longer(names_to = 'variable', names_prefix = 'Value_',
                cols = starts_with('Value'), 
                values_to = 'observed') |> 
@@ -43,12 +48,13 @@ readr::read_csv(file.path(lake_directory, "data_raw", "current_water_temp.csv"),
          hour = lubridate::hour(time)) |>
   group_by(date, hour, variable) |> 
   summarize(observation = mean(observed, na.rm = TRUE), .groups = "drop") |> 
-  mutate(depth = 0.5,
+  mutate(depth = ifelse(variable %in% c('salt', 'temperature'), 0.5, NA),
          site_id = config$location$site_id,
          datetime = lubridate::as_datetime(date) + lubridate::hours(hour)) |> 
   filter(hour == 0) |> 
   select(site_id, datetime, depth, variable, observation) |> 
   write_csv(cleaned_insitu_file)
+
 
 # Inflow targets
 # Currently getting discharge, temp, and conductivity - data is in UTC
