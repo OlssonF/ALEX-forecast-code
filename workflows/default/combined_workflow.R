@@ -21,7 +21,6 @@ if(fresh_run) unlink(file.path(lake_directory, "restart", "ALEX", config$run_con
 
 
 download.file(url = "https://water.data.sa.gov.au/Export/BulkExport?DateRange=Years1&TimeZone=9.5&Calendar=CALENDARYEAR&Interval=PointsAsRecorded&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Water%20Temp.Best%20Available--Continuous%40A4261133&Datasets[0].Calculation=Instantaneous&Datasets[0].UnitId=169&Datasets[1].DatasetName=EC%20Corr.Best%20Available%40A4261133&Datasets[1].Calculation=Instantaneous&Datasets[1].UnitId=305&_=1710853418800",
-                # "https://water.data.sa.gov.au/Export/DataSet?DataSet=Water%20Temp.Best%20Available--Continuous%40A4261133&DateRange=Years1&ExportFormat=csv&Compressed=false&RoundData=False&Unit=degC&Timezone=9.5&_=1668874574781",
               destfile = file.path(lake_directory, "data_raw", "current_water_temp.csv"))
 
 cleaned_insitu_file <- file.path(config$file_path$qaqc_data_directory, paste0(config$location$site_id, "-targets-insitu.csv"))
@@ -51,6 +50,34 @@ readr::read_csv(file.path(lake_directory, "data_raw", "current_water_temp.csv"),
   select(site_id, datetime, depth, variable, observation) |> 
   write_csv(cleaned_insitu_file)
 
+# Inflow targets
+# Currently getting discharge, temp, and conductivity - data is in UTC
+download.file(paste0('https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=2020-01-01%2000%3A00&EndTime=', Sys.Date(), '%2000%3A00&TimeZone=0&Calendar=CALENDARYEAR&Interval=PointsAsRecorded&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Discharge.Master--Daily%20Read--ML%2Fday%40A4260903&Datasets[0].Calculation=Instantaneous&Datasets[0].UnitId=239&Datasets[1].DatasetName=EC%20Corr.Best%20Available--Sensor%20near%20surface%40A4261159&Datasets[1].Calculation=Instantaneous&Datasets[1].UnitId=305&Datasets[2].DatasetName=Water%20Temp.Best%20Available--Sensor%20near%20surface%40A4261159&Datasets[2].Calculation=Instantaneous&Datasets[2].UnitId=169&_=1711479354464'),
+              destfile = file.path(lake_directory, "data_raw", "current_inflow.csv"))
+
+cleaned_inflow_file <- file.path(config$file_path$qaqc_data_directory, paste0(config$location$site_id, "-targets-inflow.csv"))
+
+readr::read_csv(file.path(lake_directory, "data_raw", "current_inflow.csv"), 
+                skip = 5, show_col_types = FALSE, 
+                col_names = c('time','Value_FLOW', 'Value_EC', 'Value_TEMP')) |> 
+  # simple conversion to salt
+  mutate(Value_SALT = oce::swSCTp(conductivity = Value_EC/1000,
+                                  temperature = Value_TEMP, 
+                                  conductivityUnit = 'mS/cm')) |> 
+  select(-Value_EC) |> 
+  pivot_longer(names_to = 'variable',
+               names_prefix = 'Value_',
+               cols = -time, 
+               values_to = 'observed') |> 
+  mutate(time = lubridate::with_tz(time, tzone = "UTC"),
+         date = lubridate::as_date(time),
+         hour = lubridate::hour(time)) |>
+  group_by(date, variable) |> # calculate the daily mean - assign this to midnight
+  summarize(observation = mean(observed, na.rm = TRUE), .groups = "drop") |> 
+  mutate(site_id = config$location$site_id,
+         datetime = lubridate::as_datetime(paste(date, '00:00:00'))) |> # assigned to midnight
+  select(site_id, datetime, variable, observation) |> 
+  write_csv(cleaned_inflow_file)
 #' Move targets to s3 bucket
 
 message("Successfully generated targets")
@@ -58,7 +85,7 @@ message("Successfully generated targets")
 FLAREr::put_targets(site_id =  config$location$site_id,
                     cleaned_insitu_file,
                     cleaned_met_file = NA,
-                    cleaned_inflow_file = NA,
+                    cleaned_inflow_file,
                     use_s3 = config$run_config$use_s3,
                     config = config)
 
@@ -67,9 +94,16 @@ if(config$run_config$use_s3){
 }
 noaa_ready <- TRUE
 
+
+
 while(noaa_ready){
   
+  
   config <- FLAREr::set_configuration(configure_run_file,lake_directory, config_set_name = config_set_name)
+  
+  
+  # Generate inflow forecast
+  source(file.path('workflows', config_set_name,'run_inflow_forecast.R'))
   
   
   output <- FLAREr::run_flare(lake_directory = lake_directory,
