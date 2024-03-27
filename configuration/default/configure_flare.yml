@@ -5,6 +5,9 @@ s3:
   targets:
     endpoint: renc.osn.xsede.org
     bucket: bio230121-bucket01/flare/targets
+  inflow_drivers:
+    endpoint: renc.osn.xsede.org
+    bucket: bio230121-bucket01/flare/drivers/inflow/ALEX
   forecasts:
     endpoint: renc.osn.xsede.org
     bucket: bio230121-bucket01/flare/forecasts/netcdf
@@ -25,11 +28,11 @@ location:
 da_setup:
     da_method: enkf
     par_fit_method: perturb_const
-    ensemble_size:  10
+    ensemble_size:  217
     localization_distance: 2 #distance in meters were covariances in the model error are used
     no_negative_states: TRUE
     assimilate_first_step: FALSE
-    use_obs_constraint: FALSE
+    use_obs_constraint: TRUE
     obs_filename: ALEX-targets-insitu.csv
 model_settings:
    ncore: 4
@@ -54,12 +57,14 @@ default_init:
    white_ice_thickness: 0.0
    blue_ice_thickness: 0.0
 inflow:
-   include_inflow: FALSE
-   use_forecasted_inflow: FALSE
-   forecast_inflow_model: inflow/FLOWS-NOAAGEFS-AR1/ALEX/0
-   observed_inflow_filename: ALEX-targets-inflow.csv
-   inflow_variables: [time, FLOW, TEMP, SALT]
+   include_inflow: TRUE
+   use_forecasted_inflow: TRUE
+   forecast_inflow_model: DOY_inflow
+   observed_filename: ALEX-targets-inflow.csv
+   inflow_variables: [time, FLOW, TEMP, SALT] # check this if it's not working
    use_ler_vars: FALSE
+   local_directory: drivers/inflow
+   use_inflow_s3: FALSE
 met:
    use_forecasted_met: TRUE
    use_observed_met: FALSE
