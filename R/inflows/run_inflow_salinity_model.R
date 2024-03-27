@@ -50,7 +50,7 @@ run_inflow_salinity_model <- function(met_df, met_past_df, met_combined, targets
   
   # select the best tuned hyper-parameters
   best_hyperparameters <- inflow_resample_fit %>%
-    select_best("rmse")
+    select_best(metric = "rmse")
   
   final_workflow <- xgboost_inflow_wkflow |> 
     finalize_workflow(best_hyperparameters)

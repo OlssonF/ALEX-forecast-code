@@ -51,7 +51,7 @@ run_inflow_flow_model <- function(met_df, met_past_df, met_combined, targets_df)
   
   # select the best tuned hyper-parameters
   best_hyperparameters <- inflow_resample_fit %>%
-    select_best("rmse")
+    select_best(metric = "rmse")
   
   final_wrorkflow <- xgboost_inflow_wkflow |> 
     finalize_workflow(best_hyperparameters)
