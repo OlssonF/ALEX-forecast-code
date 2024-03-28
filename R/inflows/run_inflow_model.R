@@ -84,7 +84,7 @@ run_inflow_model <- function(site_id,
     ## RUN PREDICTIONS
     #sensorcode_df <- read_csv('configuration/default/sensorcode.csv', show_col_types = FALSE)
     
-    inflow_targets <- read_csv(file.path(config_obs$file_path$targets_directory, config$location$site_id, paste0(config$location$site_id,"-targets-inflow.csv")), show_col_types = FALSE)
+    inflow_targets <- read_csv(file.path('targets', config$location$site_id, paste0(config$location$site_id,"-targets-inflow.csv")), show_col_types = FALSE)
     
     ## RUN FLOW PREDICTIONS
     print('Running Flow Inflow Forecast')
