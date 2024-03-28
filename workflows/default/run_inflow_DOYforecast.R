@@ -1,7 +1,7 @@
 # Script to generate a simple inflow forecast of temp, salt and discharge
 #
 
-source('R/inflow_model.R')
+source('R/inflow_DOYmodel.R')
 
 # Read in targets
 inflow_targets <- read_csv(cleaned_inflow_file)
