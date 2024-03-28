@@ -27,5 +27,11 @@ inflows_DOY <- function(var, df, forecast_dates, reference_datetime) {
            flow_number = 1,
            datetime = as_datetime(datetime))
   
+  # don't want negative flow
+  if (var == 'FLOW') {
+    out <- out |> 
+      mutate(prediction = ifelse(prediction <=0, 20, prediction))
+  }
+  
   return(out)
 }
