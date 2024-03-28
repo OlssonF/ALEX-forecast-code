@@ -7,8 +7,8 @@ source('R/inflow_DOYmodel.R')
 inflow_targets <- read_csv(cleaned_inflow_file)
 
 # What dates should the forecast be generated for
-start <- as_date(config$run_config$forecast_start_datetime)
-end <-  as_date(config$run_config$forecast_start_datetime) + days(config$run_config$forecast_horizon)
+start <- as_date(config$run_config$forecast_start_datetime) + days(1)
+end <-  as_date(start) + days(config$run_config$forecast_horizon)
 
 forecast_dates <- seq.Date(from = start, 
                            to = end, by = 'day')
