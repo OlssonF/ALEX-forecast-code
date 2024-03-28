@@ -2,9 +2,9 @@
 &glm_setup
    sim_name        = 'ALEX'
    max_layers      =  500
-   min_layer_vol   =  0.025
-   min_layer_thick =  0.1
-   max_layer_thick =  0.25
+   min_layer_vol   =   0.025
+   min_layer_thick =   0.1
+   max_layer_thick =   0.25
    non_avg         = .true.
 /
 
@@ -127,7 +127,7 @@
    strmbd_slope   =  4.0
    strmbd_drag    =  0.0160
    inflow_factor  =  1.0
-   inflow_fl      = 'xgboost_inflow_forecast.csv'
+   inflow_fl      = 'DOY_inflow_forecast.csv'
    inflow_varnum  =  3
    inflow_vars    = 'FLOW','TEMP','SALT'
 /

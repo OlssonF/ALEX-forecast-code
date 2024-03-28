@@ -20,12 +20,14 @@ inflows_DOY <- function(var, df, forecast_dates, reference_datetime) {
     # parameter value needs to be character
     mutate(parameter = as.character(row_number()),
            # model_id = ensemble_name, 
-           reference_datetime = start - days(1),
+           reference_datetime = as_datetime(start - days(1)),
            variable = var,
            family = 'ensemble',
            flow_type = 'inflow', 
            flow_number = 1,
-           datetime = as_datetime(datetime))
+           datetime = datetime) |>
+    ungroup()
+           #datetime = as_datetime(datetime))
   
   # don't want negative flow
   if (var == 'FLOW') {

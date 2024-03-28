@@ -16,6 +16,9 @@ forecast_site <- 'ALEX'
 configure_run_file <- "configure_run.yml"
 config <- FLAREr::set_configuration(configure_run_file,lake_directory, config_set_name = config_set_name)
 
+config_obs <- FLAREr::initialize_obs_processing(lake_directory, 
+                                                observation_yml = "observation_processing.yml", 
+                                                config_set_name = config_set_name)
 
 FLAREr::get_targets(lake_directory, config)
 
