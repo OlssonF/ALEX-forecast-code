@@ -31,7 +31,7 @@ cleaned_insitu_file <- file.path(config$file_path$qaqc_data_directory, paste0(co
 
 readr::read_csv(file.path(lake_directory, "data_raw", "current_insitu.csv"), 
                 skip = 5, show_col_types = FALSE, 
-                col_names = c('time','Value_level', 'Value_temperature', 'Value_EC')) |> 
+                col_names = c('time','Value_level', 'Value_EC', 'Value_temperature')) |> 
   # simple conversion to salt
   mutate(Value_salt = oce::swSCTp(conductivity = Value_EC/1000,
                                   temperature = Value_temperature, 
