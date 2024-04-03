@@ -29,7 +29,7 @@ da_setup:
     da_method: enkf
     par_fit_method: perturb_const
     ensemble_size:  217
-    localization_distance: 2 #distance in meters were covariances in the model error are used
+    localization_distance: .na #distance in meters were covariances in the model error are used
     no_negative_states: TRUE
     assimilate_first_step: FALSE
     use_obs_constraint: TRUE
