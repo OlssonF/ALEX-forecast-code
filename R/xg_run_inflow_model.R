@@ -28,7 +28,7 @@ xg_run_inflow_model <- function(train_data, model_recipe, met_combined, targets_
   #step_dummy(doy)
   
   ## define model and tunining parameters (tuning 2/8 parameters right now)
-  xgboost_mod <- boost_tree(tree_depth = tune(), trees = tune()) |> #, learn_rate = tune()) |> 
+  xgboost_mod <- boost_tree(tree_depth = tune(), trees = tune()) |> #, learn_rate = 0.1) |> 
     set_mode("regression") |>  
     set_engine("xgboost")
   
@@ -54,11 +54,11 @@ xg_run_inflow_model <- function(train_data, model_recipe, met_combined, targets_
   best_hyperparameters <- inflow_resample_fit %>%
     select_best(metric = "rmse")
   
-  final_wrorkflow <- xgboost_inflow_wkflow |> 
+  final_workflow <- xgboost_inflow_wkflow |> 
     finalize_workflow(best_hyperparameters)
   
   ## fit the model (using all available data (past and future) for now but could just use training data)
-  xgboost_inflow_fit <- fit(final_wrorkflow, data = drivers_df)
+  xgboost_inflow_fit <- fit(final_workflow, data = drivers_df)
   
   # make predictions for each ensemble member 
   forecast_precip_ens <- met_combined |> 
@@ -81,6 +81,14 @@ xg_run_inflow_model <- function(train_data, model_recipe, met_combined, targets_
     right_join(forecast_temp_ens, by = c('date',"ensemble")) |> 
     arrange(date,ensemble) #|> 
   #filter(date >= reference_datetime)
+  
+  if (var_name == 'SALT'){
+    obs_previous_df <- train_data |> 
+      select(date,obs_previous)
+    
+    forecast_met_ens <- forecast_met_ens |> 
+      full_join(obs_previous_df, by = c('date'))
+  }
   
   #make empty dataframe to store predictions
   data_build <- data.frame()

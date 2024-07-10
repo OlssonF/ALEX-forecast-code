@@ -120,7 +120,7 @@ xg_combine_model_runs <- function(site_id,
       rename(date = datetime)
     
     temp_drivers <- forecast_met |> 
-      left_join(flow_targets, by = c('date')) |> 
+      left_join(temp_targets, by = c('date')) |> 
       drop_na(observation)
     
     temp_training_df <- temp_drivers |> 
@@ -144,13 +144,14 @@ xg_combine_model_runs <- function(site_id,
       rename(date = datetime)
     
     salt_drivers <- forecast_met |> 
-      left_join(flow_targets, by = c('date')) |> 
-      drop_na(observation)
+      left_join(salt_targets, by = c('date')) |> 
+      drop_na(observation) |> 
+      mutate(obs_previous = lag(observation)) # track the previous observation value
     
     salt_training_df <- salt_drivers |> 
       dplyr::filter(date < reference_datetime)
     
-    salt_rec <- recipe(observation ~ doy + temperature,
+    salt_rec <- recipe(observation ~ doy + temperature + obs_previous,
                        data = salt_training_df)
     
     salt_predictions <- xg_run_inflow_model(train_data = salt_training_df, 
