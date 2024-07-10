@@ -147,7 +147,7 @@ xg_combine_model_runs <- function(site_id,
     salt_drivers <- forecast_met |> 
       left_join(salt_targets, by = c('date')) |> 
       drop_na(observation) |> 
-      mutate(obs_previous = lag(observation)) # track the previous observation value
+      mutate(obs_previous = lag(observation)) |>  # track the previous observation value
       drop_na(observation)
 
     salt_training_df <- salt_drivers |> 
