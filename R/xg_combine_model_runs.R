@@ -1,13 +1,13 @@
 ## function for creating inflow forecasts using xgboost model
 
 xg_combine_model_runs <- function(site_id, 
-                             forecast_start_datetime,
-                             use_s3_inflow = FALSE, 
-                             inflow_bucket = NULL,
-                             inflow_endpoint = NULL,
-                             inflow_local_directory = NULL, 
-                             forecast_horizon = NULL, 
-                             inflow_model = NULL){
+                                  forecast_start_datetime,
+                                  use_s3_inflow = FALSE, 
+                                  inflow_bucket = NULL,
+                                  inflow_endpoint = NULL,
+                                  inflow_local_directory = NULL, 
+                                  forecast_horizon = NULL, 
+                                  inflow_model = NULL){
   
   if((!is.null(forecast_start_datetime)) && (forecast_horizon > 0)){
     
@@ -20,7 +20,8 @@ xg_combine_model_runs <- function(site_id,
     
     ## pull in future NOAA data 
     
-    met_s3_future <- arrow::s3_bucket(file.path("bio230121-bucket01/flare/drivers/met/gefs-v12/stage2",paste0("reference_datetime=",noaa_date),paste0("site_id=",site_id)),
+    met_s3_future <- arrow::s3_bucket(file.path("bio230121-bucket01/flare/drivers/met/gefs-v12/stage2",
+                                                paste0("reference_datetime=",noaa_date),paste0("site_id=",site_id)),
                                       endpoint_override = endpoint,
                                       anonymous = TRUE)
     # old method
@@ -51,9 +52,9 @@ xg_combine_model_runs <- function(site_id,
     df_past <- arrow::open_dataset(met_s3_past) |> 
       #select(datetime, parameter, variable, prediction) |> 
       dplyr::filter(variable %in% c("precipitation_flux","air_temperature"),
-             ((datetime <= min_datetime  & variable == "precipitation_flux") |
-                datetime < min_datetime  & variable == "air_temperature"),
-             datetime > years_prior) |>
+                    ((datetime <= min_datetime  & variable == "precipitation_flux") |
+                       datetime < min_datetime  & variable == "air_temperature"),
+                    datetime > years_prior) |>
       collect() |> 
       rename(ensemble = parameter) |> 
       mutate(variable = ifelse(variable == "precipitation_flux", "precipitation", variable),
@@ -85,10 +86,10 @@ xg_combine_model_runs <- function(site_id,
     
     ## RUN PREDICTIONS
     #sensorcode_df <- read_csv('configuration/default/sensorcode.csv', show_col_types = FALSE)
-    inflow_targets <- read_csv(file.path(config_obs$file_path$targets_directory, config$location$site_id, 
+    inflow_targets <- read_csv(file.path(config$file_path$qaqc_data_directory, 
                                          paste0(config$location$site_id,"-targets-inflow.csv")), show_col_types = FALSE)
     
-     ## RUN FLOW PREDICTIONS
+    ## RUN FLOW PREDICTIONS
     message('Running Flow Inflow Forecast')
     
     flow_targets <- inflow_targets |> 
@@ -103,14 +104,14 @@ xg_combine_model_runs <- function(site_id,
       dplyr::filter(date < reference_datetime)
     
     flow_rec <- recipe(observation ~ precip + sevenday_precip + doy + temperature,
-                  data = flow_training_df)
+                       data = flow_training_df)
     
     flow_predictions <- xg_run_inflow_model(train_data = flow_training_df, 
-                                             model_recipe = flow_rec,
-                                             met_combined = df_combined,
-                                             targets_df = flow_targets,
-                                             drivers_df = flow_drivers,
-                                             var_name = 'FLOW')  
+                                            model_recipe = flow_rec,
+                                            met_combined = df_combined,
+                                            targets_df = flow_targets,
+                                            drivers_df = flow_drivers,
+                                            var_name = 'FLOW')  
     
     ## RUN TEMPERATURE PREDICTIONS
     message('Running Temperature Inflow Forecast')
@@ -130,11 +131,11 @@ xg_combine_model_runs <- function(site_id,
                        data = temp_training_df)
     
     temp_predictions <- xg_run_inflow_model(train_data = temp_training_df, 
-                                             model_recipe = temp_rec,
-                                             met_combined = df_combined,
-                                             targets_df = temp_targets,
-                                             drivers_df = temp_drivers,
-                                             var_name = 'TEMP') 
+                                            model_recipe = temp_rec,
+                                            met_combined = df_combined,
+                                            targets_df = temp_targets,
+                                            drivers_df = temp_drivers,
+                                            var_name = 'TEMP') 
     
     ## RUN SALINITY PREDICTIONS
     message('Running Salinity Inflow Forecast')
@@ -145,8 +146,12 @@ xg_combine_model_runs <- function(site_id,
     
     salt_drivers <- forecast_met |> 
       left_join(salt_targets, by = c('date')) |> 
+<<<<<<< HEAD
       drop_na(observation) |> 
       mutate(obs_previous = lag(observation)) # track the previous observation value
+=======
+      drop_na(observation)
+>>>>>>> 8f59e6903a6ee96a24e661e2bfd664a1c5463d99
     
     salt_training_df <- salt_drivers |> 
       dplyr::filter(date < reference_datetime)
@@ -155,11 +160,11 @@ xg_combine_model_runs <- function(site_id,
                        data = salt_training_df)
     
     salt_predictions <- xg_run_inflow_model(train_data = salt_training_df, 
-                                             model_recipe = salt_rec,
-                                             met_combined = df_combined,
-                                             targets_df = salt_targets,
-                                             drivers_df = salt_drivers,
-                                             var_name = 'SALT') 
+                                            model_recipe = salt_rec,
+                                            met_combined = df_combined,
+                                            targets_df = salt_targets,
+                                            drivers_df = salt_drivers,
+                                            var_name = 'SALT') 
     
     
     ## COMBINE ALL INFLOW PREDICTIONS
