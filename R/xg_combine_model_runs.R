@@ -146,13 +146,10 @@ xg_combine_model_runs <- function(site_id,
     
     salt_drivers <- forecast_met |> 
       left_join(salt_targets, by = c('date')) |> 
-<<<<<<< HEAD
       drop_na(observation) |> 
       mutate(obs_previous = lag(observation)) # track the previous observation value
-=======
       drop_na(observation)
->>>>>>> 8f59e6903a6ee96a24e661e2bfd664a1c5463d99
-    
+
     salt_training_df <- salt_drivers |> 
       dplyr::filter(date < reference_datetime)
     
