@@ -1,12 +1,14 @@
 library(tidyverse)
 library(tidymodels)
 library(xgboost)
+library(forecast)
 
 #source('R/fct_awss3Connect_sensorcode.R')
 #source('R/fct_awss3Connect.R')
 
 source('R/xg_run_inflow_model.R')
-source('R/xg_combine_model_runs.R')
+source('R/xg_combine_model_runs.R')d
+source('R/ets_salt_model.R')
 
 lake_directory <- here::here()
 config_set_name <- "default"

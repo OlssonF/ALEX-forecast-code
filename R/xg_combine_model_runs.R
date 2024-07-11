@@ -89,6 +89,9 @@ xg_combine_model_runs <- function(site_id,
     inflow_targets <- read_csv(file.path(config$file_path$qaqc_data_directory, 
                                          paste0(config$location$site_id,"-targets-inflow.csv")), show_col_types = FALSE)
     
+    insitu_targets <- read_csv(file.path(config$file_path$qaqc_data_directory, 
+                                         paste0(config$location$site_id,"-targets-insitu.csv")), show_col_types = FALSE)
+    
     ## RUN FLOW PREDICTIONS
     message('Running Flow Inflow Forecast')
     
@@ -142,31 +145,44 @@ xg_combine_model_runs <- function(site_id,
     
     salt_targets <- inflow_targets |>
       dplyr::filter(variable == 'SALT') |> 
-      rename(date = datetime)
+      rename(date = datetime) |> 
+      mutate(observation = na.interp(observation))
     
-    salt_drivers <- forecast_met |> 
-      left_join(salt_targets, by = c('date')) |> 
-      drop_na(observation) |> 
-      mutate(obs_previous = lag(observation)) |>  # track the previous observation value
+    if (site_identifier == 'ALEX'){
+      
+      message('Using ETS model for salt...')
+      
+      horizon <- as.numeric(as.Date(max(forecast_met$date)) - as.Date(config$run_config$forecast_start_datetime))
+      
+      salt_predictions_ensemble <- ets_salt_model(salt_targets = salt_targets, 
+                                                  horizon = horizon)
+    
+    } else {
+      
+    salt_drivers <- forecast_met |>
+      left_join(salt_targets, by = c('date')) |>
+      drop_na(observation) |>
+      #mutate(obs_previous = lag(observation)) |>  # track the previous observation value
       drop_na(observation)
 
-    salt_training_df <- salt_drivers |> 
+    salt_training_df <- salt_drivers |>
       dplyr::filter(date < reference_datetime)
-    
-    salt_rec <- recipe(observation ~ doy + temperature + obs_previous,
+
+    salt_rec <- recipe(observation ~ doy + temperature,
                        data = salt_training_df)
-    
-    salt_predictions <- xg_run_inflow_model(train_data = salt_training_df, 
+
+    salt_predictions <- xg_run_inflow_model(train_data = salt_training_df,
                                             model_recipe = salt_rec,
                                             met_combined = df_combined,
                                             targets_df = salt_targets,
                                             drivers_df = salt_drivers,
-                                            var_name = 'SALT') 
+                                            var_name = 'SALT')
+    }
     
-    
+
     ## COMBINE ALL INFLOW PREDICTIONS
     
-    inflow_combined <- bind_rows(flow_predictions, temp_predictions, salt_predictions)
+    inflow_combined <- bind_rows(flow_predictions, temp_predictions, salt_predictions_ensemble)
     
     outflow_df <- inflow_combined
     outflow_df$flow_type <- 'outflow'

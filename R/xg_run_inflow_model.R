@@ -82,13 +82,13 @@ xg_run_inflow_model <- function(train_data, model_recipe, met_combined, targets_
     arrange(date,ensemble) #|> 
   #filter(date >= reference_datetime)
   
-  if (var_name == 'SALT'){
-    obs_previous_df <- train_data |> 
-      select(date,obs_previous)
-    
-    forecast_met_ens <- forecast_met_ens |> 
-      full_join(obs_previous_df, by = c('date'))
-  }
+  # if (var_name == 'SALT'){
+  #   obs_previous_df <- train_data |> 
+  #     select(date,obs_previous)
+  #   
+  #   forecast_met_ens <- forecast_met_ens |> 
+  #     full_join(obs_previous_df, by = c('date'))
+  # }
   
   #make empty dataframe to store predictions
   data_build <- data.frame()
