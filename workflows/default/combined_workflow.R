@@ -89,14 +89,14 @@ readr::read_csv(file.path(lake_directory, "data_raw", "current_inflow.csv"),
 # Upstream inflow targets
 # Currently getting discharge, temp - data is in UTC
 options(timeout=300)
-download.file(paste0('https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=2020-01-01%2000%3A00&EndTime=', Sys.Date(), '%2000%3A00&TimeZone=0&Calendar=CALENDARYEAR&Interval=PointsAsRecorded&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Discharge.Master--Daily%20Read--ML%2Fday%40A4260903&Datasets[0].Calculation=Instantaneous&Datasets[0].UnitId=239&Datasets[1].DatasetName=EC%20Corr.Best%20Available--Sensor%20near%20surface%40A4260511&Datasets[1].Calculation=Instantaneous&Datasets[1].UnitId=305&Datasets[2].DatasetName=Water%20Temp.Best%20Available--Sensor%20near%20surface%40A4261159&Datasets[2].Calculation=Instantaneous&Datasets[2].UnitId=169&_=1711479354464'),
+download.file(paste0('https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=2020-01-01%2000%3A00&EndTime=', Sys.Date(),'%2000%3A00&TimeZone=0&Calendar=CALENDARYEAR&Interval=PointsAsRecorded&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Discharge.Master--Daily%20Read--ML%2Fday%40A4260511&Datasets[0].Calculation=Aggregate&Datasets[0].UnitId=241&_=1720716772890'),
               destfile = file.path(lake_directory, "data_raw", "upstream_inflow.csv"))
 
 cleaned_upstream_file <- file.path(config$file_path$qaqc_data_directory, paste0(config$location$site_id, "-targets-upstream.csv"))
 
 readr::read_csv(file.path(lake_directory, "data_raw", "upstream_inflow.csv"), 
                 skip = 5, show_col_types = FALSE, 
-                col_names = c('time','Value_FLOW', 'Value_TEMP')) |> 
+                col_names = c('time','Value_FLOW')) |> 
   # simple conversion to salt
   # mutate(Value_SALT = oce::swSCTp(conductivity = Value_EC/1000,
   #                                 temperature = Value_TEMP, 
