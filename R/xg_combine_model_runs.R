@@ -97,7 +97,8 @@ xg_combine_model_runs <- function(site_id,
     message('Running Flow Inflow Forecast')
     
     flow_targets <- inflow_targets |> 
-      dplyr::filter(variable == 'FLOW') |> 
+      dplyr::filter(variable == 'FLOW',
+                    datetime < reference_datetime) |> 
       rename(date = datetime)
     
     flow_drivers <- forecast_met |> 
@@ -123,7 +124,8 @@ xg_combine_model_runs <- function(site_id,
     message('Running Temperature Inflow Forecast')
     
     temp_targets <- inflow_targets |>
-      dplyr::filter(variable == 'TEMP') |> 
+      dplyr::filter(variable == 'TEMP',
+                    datetime < reference_datetime) |> 
       rename(date = datetime)
     
     temp_drivers <- forecast_met |> 
@@ -149,9 +151,10 @@ xg_combine_model_runs <- function(site_id,
     message('Running Salinity Inflow Forecast')
     
     salt_targets <- inflow_targets |>
-      dplyr::filter(variable == 'SALT') |> 
+      dplyr::filter(variable == 'SALT', 
+                    datetime < reference_datetime) |> 
       rename(date = datetime) |> 
-      mutate(observation = na.interp(observation))
+      mutate(observation = forecast::na.interp(observation))
     
     if (site_identifier == 'ALEX'){
       
@@ -159,7 +162,7 @@ xg_combine_model_runs <- function(site_id,
       
       horizon <- as.numeric(as.Date(max(forecast_met$date)) - as.Date(forecast_start_datetime))
       
-      salt_predictions_ensemble <- ets_salt_model(salt_targets = salt_targets, 
+      salt_predictions <- ets_salt_model(salt_targets = salt_targets, 
                                                   horizon = horizon, 
                                                   reference_datetime = forecast_start_datetime,
                                                   df_future = df_future, 
@@ -169,6 +172,7 @@ xg_combine_model_runs <- function(site_id,
       
       salt_drivers <- forecast_met |>
         left_join(salt_targets, by = c('date')) |>
+        #filter(date < reference_datetime) |> 
         drop_na(observation) |>
         #mutate(obs_previous = lag(observation)) |>  # track the previous observation value
         drop_na(observation)
@@ -194,7 +198,7 @@ xg_combine_model_runs <- function(site_id,
 
     ## COMBINE ALL INFLOW PREDICTIONS
     
-    inflow_combined <- bind_rows(flow_predictions, temp_predictions, salt_predictions_ensemble)
+    inflow_combined <- bind_rows(flow_predictions, temp_predictions, salt_predictions)
     
     outflow_df <- inflow_combined
     outflow_df$flow_type <- 'outflow'
