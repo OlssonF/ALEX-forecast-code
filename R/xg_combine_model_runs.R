@@ -155,28 +155,30 @@ xg_combine_model_runs <- function(site_id,
       horizon <- as.numeric(as.Date(max(forecast_met$date)) - as.Date(config$run_config$forecast_start_datetime))
       
       salt_predictions_ensemble <- ets_salt_model(salt_targets = salt_targets, 
-                                                  horizon = horizon)
-    
+                                                  horizon = horizon, 
+                                                  df_future = df_future,
+                                                  config = config)
+      
     } else {
       
-    salt_drivers <- forecast_met |>
-      left_join(salt_targets, by = c('date')) |>
-      drop_na(observation) |>
-      #mutate(obs_previous = lag(observation)) |>  # track the previous observation value
-      drop_na(observation)
-
-    salt_training_df <- salt_drivers |>
-      dplyr::filter(date < reference_datetime)
-
-    salt_rec <- recipe(observation ~ doy + temperature,
-                       data = salt_training_df)
-
-    salt_predictions <- xg_run_inflow_model(train_data = salt_training_df,
-                                            model_recipe = salt_rec,
-                                            met_combined = df_combined,
-                                            targets_df = salt_targets,
-                                            drivers_df = salt_drivers,
-                                            var_name = 'SALT')
+      salt_drivers <- forecast_met |>
+        left_join(salt_targets, by = c('date')) |>
+        drop_na(observation) |>
+        #mutate(obs_previous = lag(observation)) |>  # track the previous observation value
+        drop_na(observation)
+      
+      salt_training_df <- salt_drivers |>
+        dplyr::filter(date < reference_datetime)
+      
+      salt_rec <- recipe(observation ~ doy + temperature,
+                         data = salt_training_df)
+      
+      salt_predictions <- xg_run_inflow_model(train_data = salt_training_df,
+                                              model_recipe = salt_rec,
+                                              met_combined = df_combined,
+                                              targets_df = salt_targets,
+                                              drivers_df = salt_drivers,
+                                              var_name = 'SALT')
     }
     
 
