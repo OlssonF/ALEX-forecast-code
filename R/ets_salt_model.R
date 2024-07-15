@@ -23,10 +23,10 @@ ets_salt_model <- function(salt_targets, horizon, df_future, config){
   salt_build <- data.frame()
   
   for (i in seq.int(1:nrow(salt_predictions))){
-    salt_em_values <- rnorm(n_members, mean = salt_predictions$mu[i], sd = salt_predictions$sigma[i])
+    salt_em_values <- rnorm(n_members+1, mean = salt_predictions$mu[i], sd = salt_predictions$sigma[i])
     
     salt_em_df <- data.frame(datetime = as.Date(salt_predictions$datetime[i]), 
-                             ensemble = seq.int(0:n_members), 
+                             ensemble = seq.int(0:n_members) -1, 
                              prediction = salt_em_values)
     
     salt_build <- dplyr::bind_rows(salt_build, salt_em_df)
