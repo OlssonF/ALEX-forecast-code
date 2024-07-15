@@ -1,4 +1,4 @@
-ets_salt_model <- function(salt_targets, horizon){
+ets_salt_model <- function(salt_targets, horizon, df_future, config){
   
   # salt_targets <- inflow_targets |>
   #   dplyr::filter(variable == 'SALT') |> 
@@ -12,7 +12,7 @@ ets_salt_model <- function(salt_targets, horizon){
   #salt_forecast_values <- forecast(salt_fit, h = horizon, level = 0.03) ## taken as sigma (1 SD) from salt_fit
   
   salt_predictions <- as.data.frame(forecast(salt_fit, h = horizon, level = 0.03)) |> 
-    mutate(datetime = seq.Date(as.Date(config$run_config$forecast_start_datetime) + days(1),as.Date(max(forecast_met$date)), by = 'day')) |> 
+    mutate(datetime = seq.Date(as.Date(config$run_config$forecast_start_datetime) + days(1),as.Date(max(df_future$datetime, na.rm = T)), by = 'day')) |> 
     mutate(sigma = `Hi 3`- `Point Forecast`) |>
     mutate(mu = as.numeric(`Point Forecast`)) |>
     select(datetime, mu, sigma)
@@ -26,7 +26,7 @@ ets_salt_model <- function(salt_targets, horizon){
     salt_em_values <- rnorm(n_members, mean = salt_predictions$mu[i], sd = salt_predictions$sigma[i])
     
     salt_em_df <- data.frame(datetime = as.Date(salt_predictions$datetime[i]), 
-                             ensemble = seq.int(1:n_members), 
+                             ensemble = seq.int(0:n_members), 
                              prediction = salt_em_values)
     
     salt_build <- dplyr::bind_rows(salt_build, salt_em_df)
