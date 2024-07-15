@@ -1,4 +1,4 @@
-xg_run_inflow_model <- function(train_data, model_recipe, met_combined, targets_df, drivers_df, var_name){
+xg_run_inflow_model <- function(train_data, model_recipe, met_combined, targets_df, drivers_df, var_name, model_id, reference_datetime){
   
   ## join inflow data to met
   
@@ -115,9 +115,9 @@ xg_run_inflow_model <- function(train_data, model_recipe, met_combined, targets_
   update_historical_df <- data_build |> 
     left_join(targets_df, by = c('date')) |> 
     #mutate(prediction = ifelse(!is.na(observation), observation, prediction)) |> 
-    mutate(model_id = config$inflow$forecast_inflow_model) |> 
+    mutate(model_id = model_id) |> 
     mutate(site_id = config$location$site_id) |> 
-    mutate(reference_datetime = config$run_config$forecast_start_datetime) |> 
+    mutate(reference_datetime = reference_datetime) |> 
     mutate(family = 'ensemble') |> 
     mutate(variable = var_name) |> 
     mutate(flow_type = 'inflow') |> 

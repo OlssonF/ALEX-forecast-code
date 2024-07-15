@@ -7,6 +7,7 @@ xg_combine_model_runs <- function(site_id,
                                   inflow_endpoint = NULL,
                                   inflow_local_directory = NULL, 
                                   forecast_horizon = NULL, 
+                                  targets_directory = config$file_path$qaqc_data_directory,
                                   inflow_model = NULL){
   
   if((!is.null(forecast_start_datetime)) && (forecast_horizon > 0)){
@@ -86,11 +87,11 @@ xg_combine_model_runs <- function(site_id,
     
     ## RUN PREDICTIONS
     #sensorcode_df <- read_csv('configuration/default/sensorcode.csv', show_col_types = FALSE)
-    inflow_targets <- read_csv(file.path(config$file_path$qaqc_data_directory, 
-                                         paste0(config$location$site_id,"-targets-inflow.csv")), show_col_types = FALSE)
+    inflow_targets <- read_csv(file.path(targets_directory, 
+                                         paste0(site_id,"-targets-inflow.csv")), show_col_types = FALSE)
     
-    insitu_targets <- read_csv(file.path(config$file_path$qaqc_data_directory, 
-                                         paste0(config$location$site_id,"-targets-insitu.csv")), show_col_types = FALSE)
+    insitu_targets <- read_csv(file.path(targets_directory, 
+                                         paste0(site_id,"-targets-insitu.csv")), show_col_types = FALSE)
     
     ## RUN FLOW PREDICTIONS
     message('Running Flow Inflow Forecast')
@@ -114,7 +115,9 @@ xg_combine_model_runs <- function(site_id,
                                             met_combined = df_combined,
                                             targets_df = flow_targets,
                                             drivers_df = flow_drivers,
-                                            var_name = 'FLOW')  
+                                            var_name = 'FLOW', 
+                                            model_id = inflow_model,
+                                            reference_datetime = forecast_start_datetime)  
     
     ## RUN TEMPERATURE PREDICTIONS
     message('Running Temperature Inflow Forecast')
@@ -138,7 +141,9 @@ xg_combine_model_runs <- function(site_id,
                                             met_combined = df_combined,
                                             targets_df = temp_targets,
                                             drivers_df = temp_drivers,
-                                            var_name = 'TEMP') 
+                                            var_name = 'TEMP', 
+                                            model_id = inflow_model,
+                                            reference_datetime = forecast_start_datetime) 
     
     ## RUN SALINITY PREDICTIONS
     message('Running Salinity Inflow Forecast')
@@ -152,12 +157,13 @@ xg_combine_model_runs <- function(site_id,
       
       message('Using ETS model for salt...')
       
-      horizon <- as.numeric(as.Date(max(forecast_met$date)) - as.Date(config$run_config$forecast_start_datetime))
+      horizon <- as.numeric(as.Date(max(forecast_met$date)) - as.Date(forecast_start_datetime))
       
       salt_predictions_ensemble <- ets_salt_model(salt_targets = salt_targets, 
                                                   horizon = horizon, 
-                                                  df_future = df_future,
-                                                  config = config)
+                                                  reference_datetime = forecast_start_datetime,
+                                                  df_future = df_future, 
+                                                  inflow_model = inflow_model)
       
     } else {
       
@@ -178,7 +184,11 @@ xg_combine_model_runs <- function(site_id,
                                               met_combined = df_combined,
                                               targets_df = salt_targets,
                                               drivers_df = salt_drivers,
-                                              var_name = 'SALT')
+                                              var_name = 'SALT', 
+                                              model_id = inflow_model,
+                                              reference_datetime = forecast_start_datetime)
+      
+  
     }
     
 

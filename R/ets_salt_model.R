@@ -1,4 +1,8 @@
-ets_salt_model <- function(salt_targets, horizon, df_future, config){
+ets_salt_model <- function(salt_targets,
+                           horizon,
+                           df_future, 
+                           reference_datetime, 
+                           inflow_model){
   
   # salt_targets <- inflow_targets |>
   #   dplyr::filter(variable == 'SALT') |> 
@@ -12,7 +16,9 @@ ets_salt_model <- function(salt_targets, horizon, df_future, config){
   #salt_forecast_values <- forecast(salt_fit, h = horizon, level = 0.03) ## taken as sigma (1 SD) from salt_fit
   
   salt_predictions <- as.data.frame(forecast(salt_fit, h = horizon, level = 0.03)) |> 
-    mutate(datetime = seq.Date(as.Date(config$run_config$forecast_start_datetime) + days(1),as.Date(max(df_future$datetime, na.rm = T)), by = 'day')) |> 
+    mutate(datetime = seq.Date(as.Date(reference_datetime) + days(1),
+                               as.Date(reference_datetime + days(horizon)), 
+                               by = 'day')) |> 
     mutate(sigma = `Hi 3`- `Point Forecast`) |>
     mutate(mu = as.numeric(`Point Forecast`)) |>
     select(datetime, mu, sigma)
@@ -34,9 +40,9 @@ ets_salt_model <- function(salt_targets, horizon, df_future, config){
   }
   
   prediction_df <- salt_build |> 
-    mutate(model_id = config$inflow$forecast_inflow_model) |>
-    mutate(site_id = config$location$site_id) |>
-    mutate(reference_datetime = config$run_config$forecast_start_datetime) |>
+    mutate(model_id = inflow_model) |>
+    mutate(site_id = salt_targets$site_id[1]) |>
+    mutate(reference_datetime = reference_datetime) |>
     mutate(family = 'ensemble') |>
     mutate(variable = 'SALT') |>
     mutate(flow_type = 'inflow') |>
