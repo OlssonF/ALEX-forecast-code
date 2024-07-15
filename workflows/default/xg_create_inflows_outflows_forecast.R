@@ -1,7 +1,8 @@
 library(tidyverse)
 library(tidymodels)
 library(xgboost)
-library(forecast)
+library(fable)
+library(fabletools)
 
 #source('R/fct_awss3Connect_sensorcode.R')
 #source('R/fct_awss3Connect.R')

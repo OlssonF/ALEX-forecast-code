@@ -8,38 +8,28 @@ ets_salt_model <- function(salt_targets,
   #   dplyr::filter(variable == 'SALT') |> 
   #   rename(date = datetime) |> 
   #   mutate(observation = na.interp(observation))
+  salt_targets_ts <- salt_targets |>
+    filter(date < reference_datetime) |> 
+    mutate(date = as_date(date)) |> 
+    tsibble::as_tsibble(index = date) |> 
+    tsibble::fill_gaps() |> 
+    mutate(observation = zoo::na.approx(observation)) 
   
-  salt_fit <- forecast::ets(as.ts(salt_targets$observation))
+  salt_fit <- salt_targets_ts |> 
+    model(ETS(observation))
   
-  #horizon <- as.numeric(as.Date(max(forecast_met$date)) - as.Date(config$run_config$forecast_start_datetime))
-  
-  #salt_forecast_values <- forecast(salt_fit, h = horizon, level = 0.03) ## taken as sigma (1 SD) from salt_fit
-  
-  salt_predictions <- as.data.frame(forecast(salt_fit, h = horizon, level = 0.03)) |> 
-    mutate(datetime = seq.Date(as.Date(reference_datetime) + days(1),
-                               as.Date(reference_datetime + days(horizon)), 
-                               by = 'day')) |> 
-    mutate(sigma = `Hi 3`- `Point Forecast`) |>
-    mutate(mu = as.numeric(`Point Forecast`)) |>
-    select(datetime, mu, sigma)
-  
-  #salt_build <- salt_predictions |> select(datetime)
   n_members <- max(df_future$ensemble)
   
-  salt_build <- data.frame()
+  salt_predictions <- salt_fit |>
+    generate(h = 30, times = n_members) |> 
+    as_tibble() |> 
+    mutate(.rep = as.numeric(.rep) -1) |> 
+    rename(parameter = .rep,
+           prediction = .sim) 
   
-  for (i in seq.int(1:nrow(salt_predictions))){
-    salt_em_values <- rnorm(n_members+1, mean = salt_predictions$mu[i], sd = salt_predictions$sigma[i])
-    
-    salt_em_df <- data.frame(datetime = as.Date(salt_predictions$datetime[i]), 
-                             ensemble = seq.int(0:n_members) -1, 
-                             prediction = salt_em_values)
-    
-    salt_build <- dplyr::bind_rows(salt_build, salt_em_df)
-    
-  }
+  #salt_build <- salt_predictions |> select(datetime)
   
-  prediction_df <- salt_build |> 
+  prediction_df <- salt_predictions |> 
     mutate(model_id = inflow_model) |>
     mutate(site_id = salt_targets$site_id[1]) |>
     mutate(reference_datetime = reference_datetime) |>
@@ -47,7 +37,7 @@ ets_salt_model <- function(salt_targets,
     mutate(variable = 'SALT') |>
     mutate(flow_type = 'inflow') |>
     mutate(flow_number = 1) |>
-    rename(parameter = ensemble) |>
+    rename(datetime = date) |> 
     select(model_id, site_id, reference_datetime, datetime, family, parameter, variable, prediction, flow_type, flow_number)
   
   return(prediction_df)
