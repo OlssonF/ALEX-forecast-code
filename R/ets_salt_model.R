@@ -18,10 +18,10 @@ ets_salt_model <- function(salt_targets,
   salt_fit <- salt_targets_ts |> 
     model(ETS(observation))
   
-  n_members <- max(df_future$ensemble)
+  n_members <- length(unique(df_future$ensemble))
   
   salt_predictions <- salt_fit |>
-    generate(h = 30, times = n_members) |> 
+    generate(h = horizon, times = n_members) |> 
     as_tibble() |> 
     mutate(.rep = as.numeric(.rep) -1) |> 
     rename(parameter = .rep,
