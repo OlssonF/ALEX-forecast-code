@@ -1,7 +1,7 @@
 s3:
   drivers:
     endpoint: renc.osn.xsede.org
-    bucket: bio230121-bucket01/flare/drivers/met/gefs-v12
+    bucket: bio230121-bucket01/flare/drivers/met
   targets:
     endpoint: renc.osn.xsede.org
     bucket: bio230121-bucket01/flare/targets
@@ -70,12 +70,10 @@ flows:
    local_outflow_directory: drivers/outflow
    use_ler_vars: FALSE
 met:
-   use_forecasted_met: TRUE
-   use_observed_met: FALSE
-   local_directory: drivers/noaa/gefs-v12/stage2/parquet
-   observed_met_filename: ALEX-targets-insitu.csv
+   futre_met_model: gefs-v12-reprocess/stage2
+   historical_met_model: gefs-v12-reprocess/stage3 # or historical_met_model: gets-v12/stage3
+   local_met_directory: drivers/met
    use_ler_vars: FALSE
-   forecast_lag_days: 1
 uncertainty:
    observation: TRUE
    process: TRUE
