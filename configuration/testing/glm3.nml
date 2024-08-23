@@ -78,13 +78,12 @@
 /
 
 !-------------------------------------------------------------------------------
-! used info from Lake Alex st a4261133, constant
 &init_profiles          
-    num_depths   = 4
+    !num_depths   = 4
 	  lake_depth   = 6.0
-    the_depths   = 1.0,3.0,4.0,6.0
-	  !num_heights = 4
-    !the_heights = 1.0  ,  3.0,  4.0,  6.0
+    !the_depths   = 1.0,3.0,4.0,6.0
+	  num_heights = 4
+    the_heights = 1.0  ,  3.0,  4.0,  6.0
     the_temps    = 10.20,10.20,10.20,10.20
     the_sals     = 0.25 , 0.25, 0.25, 0.25
   	num_wq_vars  = 0

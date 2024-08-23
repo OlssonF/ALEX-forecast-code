@@ -51,6 +51,7 @@ model_settings:
    obs_config_file: observations_config.csv
    states_config_file: states_config.csv
    depth_model_sd_config_file: depth_model_sd.csv
+   max_model_layers: 75
 default_init:
    lake_depth: 6.0  #not a modeled state
    temp: [10.20,10.20,10.20,10.20]
@@ -70,10 +71,12 @@ flows:
    local_outflow_directory: drivers/outflow
    use_ler_vars: FALSE
 met:
-   futre_met_model: gefs-v12-reprocess/stage2
-   historical_met_model: gefs-v12-reprocess/stage3 # or historical_met_model: gets-v12/stage3
+   future_met_model: gefs-v12/stage2
+   historical_met_model: gefs-v12/stage3 # or historical_met_model: gets-v12/stage3
    local_met_directory: drivers/met
    use_ler_vars: FALSE
+   forecast_lag_days: 1
+   use_met_s3: TRUE
 uncertainty:
    observation: TRUE
    process: TRUE
