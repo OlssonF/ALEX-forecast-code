@@ -30,7 +30,7 @@ location:
    longitude: 138  #Degrees East
 da_setup:
     da_method: enkf
-    par_fit_method: perturb_const
+    par_fit_method: perturb
     ensemble_size:  217
     localization_distance: .na #distance in meters were covariances in the model error are used
     no_negative_states: TRUE
@@ -41,12 +41,7 @@ model_settings:
    ncore: 4
    model_name: glm
    base_GLM_nml: glm3.nml
-   modeled_depths: [0.0, 0.25, 0.50, 0.75, 1.0,
-                    1.25, 1.50, 1.75, 2.0,
-                    2.25, 2.50, 2.75, 3.0,
-                    3.25, 3.50, 3.75, 4.0,
-                    4.25, 4.50, 4.75, 5.0,
-                    5.25, 5.50, 5.75, 6.0]
+   modeled_depths: [0.0, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
    par_config_file: parameter_calibration_config.csv
    obs_config_file: observations_config.csv
    states_config_file: states_config.csv
@@ -63,11 +58,11 @@ default_init:
 flows:
    include_inflow: TRUE
    include_outflow: TRUE
-   future_inflow_model: historical_interp
-   historical_inflow_model: historical_interp
+   future_inflow_model: future/model_id=historical_interp
+   historical_inflow_model: historical/model_id=historical_interp
    local_inflow_directory: drivers/inflow
-   future_outflow_model: historical_interp
-   historical_outflow_model: historical_interp
+   future_outflow_model: future/model_id=historical_interp
+   historical_outflow_model: historical/model_id=historical_interp
    local_outflow_directory: drivers/outflow
    use_ler_vars: FALSE
 met:
@@ -76,7 +71,8 @@ met:
    local_met_directory: drivers/met
    use_ler_vars: FALSE
    forecast_lag_days: 1
-   use_met_s3: TRUE
+   future_met_use_s3: TRUE
+   historical_met_use_s3: TRUE
 uncertainty:
    observation: TRUE
    process: TRUE
@@ -89,3 +85,4 @@ output_settings:
    diagnostics_names:  [extc]
    evaluate_past: TRUE
    variables_in_scores: [state, parameter]
+   generate_plot: TRUE
