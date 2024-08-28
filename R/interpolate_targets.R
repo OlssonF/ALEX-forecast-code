@@ -21,6 +21,7 @@ interpolate_targets <- function(targets,
   df <- readr::read_csv(file.path(lake_directory, targets_dir, site_id, targets),
                         show_col_types = F)
   
+  
   # which variables are we using?
   if (is.null(variables)) {
     filter_vars  <- dplyr::distinct(df,variable) |> 
@@ -31,13 +32,18 @@ interpolate_targets <- function(targets,
   
   # is depth a column in these targets?
   if (is.null(groups)) {
-    grouping_vars <- c('variable')
+    grouping_vars <- c('variable',  'site_id')
   }else {
-    grouping_vars <- c('variable', groups)
+    grouping_vars <- c('variable', 'site_id', groups)
   }
+  
   
   # generate an interpolation
   df_interp <- df |>
+    mutate(datetime = as_date(datetime)) |> 
+    tsibble::as_tsibble(key = all_of(grouping_vars), index = datetime) |> 
+    tsibble::fill_gaps() |> 
+    tibble::as_tibble() |> 
     dplyr::filter(variable %in% filter_vars) |> 
     dplyr::group_by(dplyr::pick(any_of(grouping_vars))) |> 
     dplyr::arrange(dplyr::pick(any_of(grouping_vars), datetime)) |> 
