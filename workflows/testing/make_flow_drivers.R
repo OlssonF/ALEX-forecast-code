@@ -8,7 +8,7 @@ hist_interp_inflow <- interpolate_targets(targets = 'ALEX-targets-inflow.csv',
                                           site_id = 'ALEX', 
                                           variables = c('FLOW', 'SALT', 'TEMP'),
                                           groups = 'inflow_name',
-                                          method = 'spline') |> 
+                                          method = 'linear') |> 
   mutate(flow_number = ifelse(inflow_name == 'murray', 1, ifelse(inflow_name == 'finnis', 2, NA)), 
          parameter = 1) |> 
   rename(prediction = observation) |> 
@@ -23,7 +23,7 @@ arrow::write_dataset(hist_interp_inflow,
 forecast_date <- config$run_config$forecast_start_datetime
 future_inflow <- hist_interp_inflow |> 
   filter(datetime >= as_datetime(forecast_date),
-         datetime <= as_date(forecast_date) + config$run_config$forecast_horizon) |> 
+         datetime <= as_datetime(forecast_date) + days(config$run_config$forecast_horizon)) |> 
   # reframe(prediction = rnorm(10, mean = prediction, sd = 1), 
   #         parameter = 1:10,
   #         .by = c(site_id, datetime, variable, flow_number)) |> 
@@ -42,8 +42,8 @@ hist_interp_outflow <- interpolate_targets(targets = 'ALEX-targets-outflow.csv',
                                            targets_dir = 'targets', 
                                            site_id = 'ALEX', 
                                            variables = c('FLOW', 'SALT', 'TEMP'),
-                                           groups = 'inflow_name',
-                                           method = 'spline') |> 
+                                           groups = NULL,
+                                           method = 'linear') |> 
   mutate(flow_number = 1, 
          parameter = 1) |> 
   rename(prediction = observation)

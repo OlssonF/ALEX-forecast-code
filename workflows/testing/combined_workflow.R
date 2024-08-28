@@ -11,25 +11,34 @@ fresh_run <- TRUE
 
 Sys.setenv("AWS_DEFAULT_REGION" = "renc",
            "AWS_S3_ENDPOINT" = "osn.xsede.org",
-           "USE_HTTPS" = TRUE)
+           "USE_HTTPS" = TRUE,
+           'GLM_PATH' = 'GLM3r')
 
 message("Checking for NOAA forecasts")
 
-config <- FLAREr::set_configuration(configure_run_file,lake_directory, config_set_name = config_set_name)
+config <- FLAREr::set_up_simulation(configure_run_file,lake_directory, config_set_name = config_set_name,
+                                    clean_start = T)
 
-if(fresh_run) unlink(file.path(lake_directory, "restart", "ALEX", config$run_config$sim_name, configure_run_file))
+# if(fresh_run) unlink(file.path(lake_directory, "restart", "ALEX", config$run_config$sim_name, configure_run_file))
 
 # Generate targets
 source(file.path('workflows', config_set_name, 'generate_targets.R'))
 
+# remove most of the observations except temp and first time step
+# read_csv(file.path('targets', 'ALEX', config$da_setup$obs_filename)) |> 
+#   filter(datetime == as_datetime(config$run_config$start_datetime) | variable == 'temperature') |> 
+#   write_csv(file.path('targets', 'ALEX', config$da_setup$obs_filename))
+
+
+
 message("Successfully generated targets")
 
-FLAREr::put_targets(site_id =  config$location$site_id,
-                    cleaned_insitu_file,
-                    cleaned_met_file = NA,
-                    cleaned_inflow_file,
-                    use_s3 = config$run_config$use_s3,
-                    config = config)
+FLAREr:::put_targets(site_id =  config$location$site_id,
+                     cleaned_insitu_file,
+                     cleaned_met_file = NA,
+                     cleaned_inflow_file,
+                     use_s3 = config$run_config$use_s3,
+                     config = config)
 
 if(config$run_config$use_s3){
   message("Successfully moved targets to s3 bucket")
@@ -41,7 +50,7 @@ noaa_ready <- TRUE
 while(noaa_ready){
   
   
-  config <- FLAREr::set_configuration(configure_run_file,lake_directory, config_set_name = config_set_name)
+  config <- FLAREr::set_up_simulation(configure_run_file,lake_directory, config_set_name = config_set_name)
   
   # Generate inflow forecast
   source(file.path('workflows', config_set_name,'make_flow_drivers.R'))
@@ -55,27 +64,27 @@ while(noaa_ready){
   start_datetime <- lubridate::as_datetime(config$run_config$forecast_start_datetime) - lubridate::days(5) ## SET LONGER LOOK BACK FOR DATA
   restart_file <- paste0(config$location$site_id,"-", (lubridate::as_date(forecast_start_datetime)- days(1)), "-",config$run_config$sim_name ,".nc")
   
-  FLAREr::update_run_config2(lake_directory = lake_directory,
-                             configure_run_file = configure_run_file,
-                             restart_file = basename(output$restart_file),
-                             start_datetime = lubridate::as_datetime(config$run_config$start_datetime) + lubridate::days(1),
-                             end_datetime = NA,
-                             forecast_start_datetime = lubridate::as_datetime(config$run_config$forecast_start_datetime) + lubridate::days(1),
-                             forecast_horizon = config$run_config$forecast_horizon,
-                             sim_name = config$run_config$sim_name,
-                             site_id = config$location$site_id,
-                             configure_flare = config$run_config$configure_flare,
-                             configure_obs = config$run_config$configure_obs,
-                             use_s3 = config$run_config$use_s3,
-                             bucket = config$s3$warm_start$bucket,
-                             endpoint = config$s3$warm_start$endpoint,
-                             use_https = TRUE)
+  FLAREr::update_run_config(lake_directory = lake_directory,
+                            configure_run_file = configure_run_file,
+                            restart_file = basename(output$restart_file),
+                            start_datetime = lubridate::as_datetime(config$run_config$start_datetime) + lubridate::days(1),
+                            end_datetime = NA,
+                            forecast_start_datetime = lubridate::as_datetime(config$run_config$forecast_start_datetime) + lubridate::days(1),
+                            forecast_horizon = config$run_config$forecast_horizon,
+                            sim_name = config$run_config$sim_name,
+                            site_id = config$location$site_id,
+                            configure_flare = config$run_config$configure_flare,
+                            configure_obs = config$run_config$configure_obs,
+                            use_s3 = config$run_config$use_s3,
+                            bucket = config$s3$warm_start$bucket,
+                            endpoint = config$s3$warm_start$endpoint,
+                            use_https = TRUE)
   
   #RCurl::url.exists("https://hc-ping.com/31c3e142-8f8c-42ae-9edc-d277adb94b31", timeout = 5)
   
-  noaa_ready <- FLAREr::check_noaa_present_arrow(lake_directory,
-                                                 configure_run_file,
-                                                 config_set_name = config_set_name)
+  noaa_ready <- FLAREr::check_noaa_present(lake_directory,
+                                           configure_run_file,
+                                           config_set_name = config_set_name)
   
   
 }
