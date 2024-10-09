@@ -1,0 +1,9 @@
+restart_file: ALEX-2024-06-30-testing.nc
+start_datetime: 2024-06-29 00:00:00
+end_datetime: .na
+forecast_start_datetime: 2024-06-30 00:00:00
+forecast_horizon: 34
+sim_name: testing_open
+configure_flare: configure_flare.yml
+configure_obs: observation_processing.yml
+use_s3: false

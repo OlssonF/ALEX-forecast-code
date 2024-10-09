@@ -65,9 +65,9 @@ list.files(pattern = "current_inflow*",) |>
          # simple conversion to salt
          Value_SALT = oce::swSCTp(conductivity = Value_EC/1000,
                                   temperature = Value_TEMP,
-                                  conductivityUnit = 'mS/cm'),
+                                  conductivityUnit = 'mS/cm')) |> 
          # convert from m3/s --> m3/day
-         Value_FLOW = 86400 * Value_FLOW) |>
+         # Value_FLOW = 86400 * Value_FLOW) |>
   select(-Value_EC) |>
   pivot_longer(names_to = 'variable',
                names_prefix = 'Value_',
@@ -95,8 +95,8 @@ cleaned_outflow_file <- file.path(config$file_path$qaqc_data_directory, paste0(c
 readr::read_csv(file.path(lake_directory, "data_raw", "current_outflow.csv"),
                 skip = 5, show_col_types = FALSE,
                 col_names = c('time','Value_FLOW')) |>
-  mutate(# convert from m3/s --> m3/day
-         Value_FLOW = 86400 * Value_FLOW) |> 
+  # mutate(# convert from m3/s --> m3/day
+  #        Value_FLOW = 86400 * Value_FLOW) |> 
   pivot_longer(names_to = 'variable',
                names_prefix = 'Value_',
                cols = -time,

@@ -1,3 +1,4 @@
+set.seed(100)
 readRenviron("~/.Renviron") # MUST come first
 library(tidyverse)
 library(lubridate)
@@ -5,7 +6,7 @@ lake_directory <- here::here()
 setwd(lake_directory)
 forecast_site <- "ALEX"
 configure_run_file <- "configure_run.yml"
-config_set_name <- "testing"
+config_set_name <- "specified_out"
 
 fresh_run <- TRUE
 
@@ -23,13 +24,6 @@ config <- FLAREr::set_up_simulation(configure_run_file,lake_directory, config_se
 
 # Generate targets
 source(file.path('workflows', config_set_name, 'generate_targets.R'))
-
-# remove most of the observations except temp and first time step
-# read_csv(file.path('targets', 'ALEX', config$da_setup$obs_filename)) |> 
-#   filter(datetime == as_datetime(config$run_config$start_datetime) | variable == 'temperature') |> 
-#   write_csv(file.path('targets', 'ALEX', config$da_setup$obs_filename))
-
-
 
 message("Successfully generated targets")
 

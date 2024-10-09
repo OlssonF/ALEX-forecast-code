@@ -46,7 +46,7 @@
    latitude   = -35.44
    longitude  = 139.16
    base_elev  = -5.3
-   crest_elev = 0.9
+   crest_elev = 0.5
    bsn_len    = 40000  ! verify, estim
    bsn_wid    = 35000  ! verify, estim
    bsn_vals   = 49
@@ -140,7 +140,9 @@
    bsn_len_outl   = 35000    !as in morphom, estim
    bsn_wid_outl   = 40000    !as in morphom, estim
    outflow_fl     = 'outflow_Well_v2.csv'
-   outflow_factor = 1
+   outflow_factor = 0
+   crest_width = 2000  
+   crest_factor = 1
 /
 
 !-------------------------------------------------------------------------------
