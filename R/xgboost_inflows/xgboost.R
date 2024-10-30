@@ -4,23 +4,33 @@
 #' @param use_recipe a tidy models recipe
 #' @param forecast_df a dataframe with the data needed to predict - same as in training_df (use generate_forecast_df)
 #' @param transform_function what transformations should be applied
+#' @param save_model logical. Save model fit object? Default  = F
+#' @param refit_model logical. Refit the model? Otherwise use saved object file. Default = T 
+#' @param save_loc where should the model be saved?
 #' @return A dataframe.
 
 generate_xgb_flow <- function(training_df,
                               use_recipe = 'all',
                               forecast_df,
-                              transform_function = 'none') {
+                              transform_function = 'none',
+                              refit_model = TRUE,
+                              save_model = FALSE, 
+                              save_loc = '.') {
   
   horizon <- forecast_df |> ungroup() |>  distinct(date) |> nrow()
   reference_date <- forecast_df |> ungroup() |> summarise(reference_date = min(date)) |> pull()
+  variable <- unique(training_df$variable)
+  inflow_name <- unique(training_df$inflow_name)
+  
+  all_dates <- data.frame(date = seq.Date(as_date(min(training_df$date)), as_date(max(training_df$date)), 'day'))
   
   # set up checks
-  if (length(unique(training_df$variable)) != 1) {
+  if (length(variable) != 1) {
     stop('need unique variable and inflow_name')
   }
   
   if (sum(str_detect(colnames(training_df), 'inflow_name')) == 1) {
-    if (length(unique(training_df$inflow_name)) != 1) {
+    if (length(inflow_name) != 1) {
       stop('need unique variable and inflow_name')
       
     }
@@ -31,13 +41,13 @@ generate_xgb_flow <- function(training_df,
     transform_function  <- function(data) {data}
   }
   
-  
   # Set up data
   all_data <- training_df |> 
     select(-tidyr::any_of(c('inflow_name', 'site_id', 'variable'))) |> 
     # mutate(observation = log(observation),
     #        precip = log(precip + 1)) |> 
     arrange(date) |> 
+    full_join(all_dates, by = 'date') |> 
     ungroup() |> 
     future_frame(.length_out = horizon, 
                  .date_var = 'date',
@@ -55,56 +65,69 @@ generate_xgb_flow <- function(training_df,
   train_data <- data_lags[1:round((nrow(data_lags)*0.8)),]
   test_data <- data_lags[round(nrow(data_lags)*0.8):nrow(data_lags),]
   
-  # Set recipe
-  if (is_character(use_recipe)) {
-    if (use_recipe == 'all') {
-      use_recipe <- recipe(observation ~ ., data = train_data) |> 
-        step_rm('date')
-      message("using default recipe")
+  # Use a saved model fit?
+  if (!refit_model) {
+    xgboost_inflow_fit <- read_rds(file.path(save_loc, paste0('fitted_model_',variable, '_', inflow_name, '.rds')))
+    message("using a saved prefitted model: ", file.path(save_loc, paste0('fitted_model_',variable, '_', inflow_name, '.rds')))
+  } else {
+    message("refitting model")
+    # Set recipe
+    if (is_character(use_recipe)) {
+      if (use_recipe == 'all') {
+        use_recipe <- recipe(observation ~ ., data = train_data) |> 
+          step_rm('date')
+        message("using default recipe")
+        print(use_recipe$var_info)
+        print(use_recipe$steps)
+      }
+      
+    } else if (class(use_recipe) == "recipe") {
+      message('using provided recipe')
       print(use_recipe$var_info)
       print(use_recipe$steps)
     }
     
-  } else if (class(use_recipe) == "recipe") {
-    message('using provided recipe')
-    print(use_recipe$var_info)
-    print(use_recipe$steps)
+    
+    ## define folds in training data 
+    folds <- vfold_cv(data_lags, v = 5) # orginally set to 10
+    
+    ## define model and tunining parameters (tuning 2/8 parameters right now)
+    xgboost_mod <- boost_tree(tree_depth = tune(), trees = tune(), mtry = tune()) |> #, learn_rate = 0.1) |> 
+      set_mode("regression") |>  
+      set_engine("xgboost")
+    
+    # define the model workflow
+    xgboost_inflow_wkflow <- 
+      workflow() %>% 
+      add_model(xgboost_mod) %>% 
+      add_recipe(use_recipe)
+    
+    # tune the hyper-parameters
+    inflow_resample_fit <- xgboost_inflow_wkflow |> 
+      tune_grid(resamples = folds, 
+                grid = 25, 
+                control = control_grid(save_pred = TRUE),
+                metrics = metric_set(rmse))
+    
+    
+    # select the best tuned hyper-parameters
+    best_hyperparameters <- inflow_resample_fit %>%
+      select_best(metric = "rmse")
+    
+    final_workflow <- xgboost_inflow_wkflow |> 
+      finalize_workflow(best_hyperparameters)
+    
+    ## fit the model 
+    xgboost_inflow_fit <- fit(final_workflow, data = train_data) |> 
+      recursive(transform = transform_function,
+                train_tail = tail(train_data, n = 10)) # NEEDS TO BE AT LEAST AS LONG AS THE LONGEST LAG
+    
+    if (save_model) {
+      write_rds(xgboost_inflow_fit,file.path(save_loc, paste0('fitted_model_',variable, '_', inflow_name, '.rds')))
+      message("Saving refitted model: ", file.path(save_loc, paste0('fitted_model_',variable, '_', inflow_name, '.rds')))
+    } 
+    
   }
-  
-  
-  ## define folds in training data 
-  folds <- vfold_cv(data_lags, v = 5) # orginally set to 10
-  
-  ## define model and tunining parameters (tuning 2/8 parameters right now)
-  xgboost_mod <- boost_tree(tree_depth = tune(), trees = tune(), mtry = tune()) |> #, learn_rate = 0.1) |> 
-    set_mode("regression") |>  
-    set_engine("xgboost")
-  
-  # define the model workflow
-  xgboost_inflow_wkflow <- 
-    workflow() %>% 
-    add_model(xgboost_mod) %>% 
-    add_recipe(use_recipe)
-  
-  # tune the hyper-parameters
-  inflow_resample_fit <- xgboost_inflow_wkflow |> 
-    tune_grid(resamples = folds, 
-              grid = 25, 
-              control = control_grid(save_pred = TRUE),
-              metrics = metric_set(rmse))
-  
-  
-  # select the best tuned hyper-parameters
-  best_hyperparameters <- inflow_resample_fit %>%
-    select_best(metric = "rmse")
-  
-  final_workflow <- xgboost_inflow_wkflow |> 
-    finalize_workflow(best_hyperparameters)
-  
-  ## fit the model 
-  xgboost_inflow_fit <- fit(final_workflow, data = train_data) |> 
-    recursive(transform = transform_function,
-              train_tail = tail(train_data, n = 10)) # NEEDS TO BE AT LEAST AS LONG AS THE LONGEST LAG
   
   # Add to a modeltime table
   model_tbl <- modeltime_table(xgboost_inflow_fit)
@@ -162,12 +185,12 @@ generate_xgb_flow <- function(training_df,
 apply_lags_flow <- function(data) {
   
   data |> 
-    tk_augment_lags(observation, .lags = 1:2) |> 
+    tk_augment_lags(observation, .lags = 1) |> 
     tk_augment_lags(precip, .lags = 1) |> 
-    tk_augment_slidify(precip,
+    tk_augment_slidify(precip, .align = 'right',
                        .f = ~sum(.x, na.rm = T),
                        .period = 3,
-                       .partial = T) |> 
+                       .partial = F) |> 
     ungroup()
 }
 
