@@ -47,11 +47,8 @@ while(noaa_ready){
   config <- FLAREr::set_up_simulation(configure_run_file,lake_directory, config_set_name = config_set_name)
   
   # Generate inflow/outflows
-  source(file.path('workflows', config_set_name,'historical_flow_drivers.R')) # historical drivers
-  source(file.path('workflows', config_set_name,'xgb_flow_drivers.R')) # xgboost inflows forecast
-  source(file.path('workflows', config_set_name, 'persistence_outflow.R')) # persistence outflow forecast
- 
-  
+  source(file.path('workflows', config_set_name,'combined_flow_drivers_workflow.R')) # combined flow drivers
+
   # run FLARE forecast
   output <- FLAREr::run_flare(lake_directory = lake_directory,
                               configure_run_file = configure_run_file,
