@@ -210,6 +210,22 @@ apply_lags_salt <- function(data) {
     ungroup()
 }
 
+#' Apply transformation such as lags and rolling window sums to salt dataset
+#'
+#' @param data 
+#' @return A dataframe with the transformation column
+apply_lags_temp <- function(data) {
+  
+  data |> 
+    tk_augment_lags(observation, .lags = 1) |> 
+    # tk_augment_lags(precip, .lags = 1) |> 
+    # tk_augment_slidify(precip,
+    #                    .f = ~sum(.x, na.rm = T),
+    #                    .period = 3,
+    #                    .partial = T) |> 
+    ungroup()
+}
+
 
 
 #' Generate training_df for use in generate_xgb_flow
