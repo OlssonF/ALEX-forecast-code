@@ -8,7 +8,7 @@ forecast_site <- "ALEX"
 configure_run_file <- "configure_run.yml"
 config_set_name <- "glm_flare_v3"
 
-fresh_run <- TRUE
+fresh_run <- FALSE
 
 Sys.setenv("AWS_DEFAULT_REGION" = "renc",
            "AWS_S3_ENDPOINT" = "osn.xsede.org",
@@ -18,7 +18,7 @@ Sys.setenv("AWS_DEFAULT_REGION" = "renc",
 message("Checking for NOAA forecasts")
 
 config <- FLAREr::set_up_simulation(configure_run_file,lake_directory, config_set_name = config_set_name,
-                                    clean_start = T)
+                                    clean_start = fresh_run)
 
 # if(fresh_run) unlink(file.path(lake_directory, "restart", "ALEX", config$run_config$sim_name, configure_run_file))
 
@@ -61,9 +61,9 @@ while(noaa_ready){
   FLAREr::update_run_config(lake_directory = lake_directory,
                             configure_run_file = configure_run_file,
                             restart_file = basename(output$restart_file),
-                            start_datetime = lubridate::as_datetime(config$run_config$start_datetime) + lubridate::days(1),
+                            start_datetime = start_datetime,
                             end_datetime = NA,
-                            forecast_start_datetime = lubridate::as_datetime(config$run_config$forecast_start_datetime) + lubridate::days(1),
+                            forecast_start_datetime = forecast_start_datetime,
                             forecast_horizon = config$run_config$forecast_horizon,
                             sim_name = config$run_config$sim_name,
                             site_id = config$location$site_id,
