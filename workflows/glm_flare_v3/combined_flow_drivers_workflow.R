@@ -70,9 +70,9 @@ forecast_info <- hist_interp_outflow  |>
   filter(datetime < reference_date) |> # remove observations after reference_date
   summarise(last_obs = max(datetime),
             .by = c(site_id, variable)) |> 
-  mutate(horizon = as.numeric(reference_date - last_obs + horizon)) |> 
+  mutate(horizon = as.numeric(as_date(reference_date) - as_date(last_obs) + horizon)) |> 
   # what is the total horizon including missing days of observations up to the reference_date
-  mutate(start_training = last_obs - months(2))
+  mutate(start_training = last_obs - days(60))
 
 
 future_outflow_RW <- hist_interp_outflow |> 
@@ -87,7 +87,7 @@ future_outflow_RW <- hist_interp_outflow |>
   fabletools::model(RW = fable::RW(box_cox(observation, 0.3))) |>  
   
   # generate forecast of specific horizon with 31 parameters
-  fabletools::generate(h = 30, times = 62, bootstrap = T) |> 
+  fabletools::generate(h = 30, times = 31, bootstrap = T) |> 
   as_tibble() |> 
   
   # Reverse transformation
@@ -127,7 +127,7 @@ forecast_info <- hist_interp_inflow  |>
             .by = c(site_id, variable, flow_number)) |> 
   mutate(horizon = as.numeric(reference_date - last_obs + horizon)) |> 
   # what is the total horizon including missing days of observations up to the reference_date
-  mutate(start_training = last_obs - months(2))
+  mutate(start_training = last_obs - days(60))
 
 future_inflow_RW <- NULL
 
