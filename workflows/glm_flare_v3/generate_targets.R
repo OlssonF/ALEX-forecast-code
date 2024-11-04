@@ -38,12 +38,19 @@ readr::read_csv(file.path(lake_directory, "data_raw", "current_insitu.csv"),
 
 # inflow driver observations ####
 # Currently getting discharge, temp, and conductivity - data is in UTC
-options(timeout=300)
+options(timeout=3000)
 #Murray (Q@A4260903, WQ@A4261159)
-download.file(paste0('https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=2015-01-01%2000%3A00&EndTime=', Sys.Date(), '%2000%3A00&TimeZone=0&Calendar=CALENDARYEAR&Interval=PointsAsRecorded&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Discharge.Master--Daily%20Read--ML%2Fday%40A4260903&Datasets[0].Calculation=Instantaneous&Datasets[0].UnitId=239&Datasets[1].DatasetName=EC%20Corr.Best%20Available--Sensor%20near%20surface%40A4261159&Datasets[1].Calculation=Instantaneous&Datasets[1].UnitId=305&Datasets[2].DatasetName=Water%20Temp.Best%20Available--Sensor%20near%20surface%40A4261159&Datasets[2].Calculation=Instantaneous&Datasets[2].UnitId=169&_=1711479354464'),
-              destfile = file.path(lake_directory, "data_raw", "current_inflow_murray.csv"))
+# download.file(paste0('https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=2015-01-01%2000%3A00&EndTime=', Sys.Date(), '%2000%3A00&TimeZone=0&Calendar=CALENDARYEAR&Interval=PointsAsRecorded&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Discharge.Master--Daily%20Read--ML%2Fday%40A4260903&Datasets[0].Calculation=Instantaneous&Datasets[0].UnitId=239&_=17305800968060'),
+#               destfile = file.path(lake_directory, "data_raw", "current_inflow_murray1.csv"))
+# 
+# download.file(paste0('https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=2015-01-01%2000%3A00&EndTime=', Sys.Date(), '%2000%3A00&TimeZone=0&Calendar=CALENDARYEAR&Interval=PointsAsRecorded&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=EC%20Corr.Best%20Available--Sensor%20near%20surface%40A4261159&Datasets[0].Calculation=Instantaneous&Datasets[0].UnitId=305&Datasets[1].DatasetName=Water%20Temp.Best%20Available--Sensor%20near%20surface%40A4261159&Datasets[1].Calculation=Instantaneous&Datasets[1].UnitId=169&_=1730580252875'),
+#               destfile = file.path(lake_directory, "data_raw", "current_inflow_murray2.csv"))
+
+download.file(paste0('https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=2015-01-01%2000%3A00&EndTime=', Sys.Date(), '%2000%3A00&TimeZone=0&Calendar=CALENDARYEAR&Interval=Hourly&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Discharge.Master--Daily%20Read--ML%2Fday%40A4260903&Datasets[0].Calculation=Aggregate&Datasets[0].UnitId=239&Datasets[1].DatasetName=EC%20Corr.Best%20Available--Sensor%20near%20surface%40A4261159&Datasets[1].Calculation=Aggregate&Datasets[1].UnitId=305&Datasets[2].DatasetName=Water%20Temp.Best%20Available--Sensor%20near%20surface%40A4261159&Datasets[2].Calculation=Aggregate&Datasets[2].UnitId=169&_=1730580709437'),
+              destfile = 'current_inflow_murray.csv')
+              
 #Finnis (A4261208)
-download.file(paste0("https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=2015-01-01%2000%3A00&EndTime=", Sys.Date(), "%2000%3A00&TimeZone=0&Calendar=CALENDARYEAR&Interval=PointsAsRecorded&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Discharge.Best%20Available%40A4261208&Datasets[0].Calculation=Instantaneous&Datasets[0].UnitId=239&Datasets[1].DatasetName=EC%20Corr.Best%20Available%40A4261208&Datasets[1].Calculation=Instantaneous&Datasets[1].UnitId=305&Datasets[2].DatasetName=Water%20Temp.Best%20Available--Continuous%40A4261208&Datasets[2].Calculation=Instantaneous&Datasets[2].UnitId=169&_=1724767129649"),
+download.file(paste0("https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=2015-01-01%2000%3A00&EndTime=", Sys.Date(), "%2000%3A00&TimeZone=0&Calendar=CALENDARYEAR&Interval=Hourly&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Discharge.Best%20Available%40A4261208&Datasets[0].Calculation=Instantaneous&Datasets[0].UnitId=239&Datasets[1].DatasetName=EC%20Corr.Best%20Available%40A4261208&Datasets[1].Calculation=Instantaneous&Datasets[1].UnitId=305&Datasets[2].DatasetName=Water%20Temp.Best%20Available--Continuous%40A4261208&Datasets[2].Calculation=Instantaneous&Datasets[2].UnitId=169&_=1724767129649"),
               destfile = file.path(lake_directory, "data_raw", "current_inflow_finnis.csv"))
 
 # #Bremer (A4261219)
@@ -56,11 +63,12 @@ download.file(paste0("https://water.data.sa.gov.au/Export/BulkExport?DateRange=C
 
 cleaned_inflow_file <- file.path(config$file_path$qaqc_data_directory, paste0(config$location$site_id, "-targets-inflow.csv"))
 
-list.files(pattern = "current_inflow*",) |> 
+
+  
+list.files(pattern = "current_inflow*") |> 
   map_dfr(read_csv, id = "inflow_name", 
           show_col_types = FALSE, skip=5, 
-          col_names = c('time','Value_FLOW', 'Value_EC', 'Value_TEMP')) |> 
-  
+          col_names = c('time1', 'time2', 'Value_FLOW', 'Value_EC', 'Value_TEMP')) |> 
   mutate(inflow_name = stringr::str_remove_all(inflow_name, str_c(c('.csv', 'current_inflow_'), collapse="|")),
          # simple conversion to salt
          Value_SALT = oce::swSCTp(conductivity = Value_EC/1000,
@@ -73,9 +81,9 @@ list.files(pattern = "current_inflow*",) |>
                names_prefix = 'Value_',
                cols = Value_FLOW:Value_SALT,
                values_to = 'observed') |>
-  mutate(time = lubridate::with_tz(time, tzone = "UTC"),
-         date = lubridate::as_date(time),
-         hour = lubridate::hour(time)) |>
+  mutate(time = lubridate::with_tz(time2, tzone = "UTC"),
+         date = lubridate::as_date(time2),
+         hour = lubridate::hour(time2)) |>
   group_by(date, variable, inflow_name) |> # calculate the daily mean - assign this to midnight
   summarize(observation = mean(observed, na.rm = TRUE), .groups = "drop") |>
   mutate(site_id = config$location$site_id,
