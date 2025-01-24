@@ -191,6 +191,7 @@ apply_lags_flow <- function(data) {
                        .f = ~sum(.x, na.rm = T),
                        .period = 3,
                        .partial = F) |> 
+    # tk_augment_lags(QSA, .lags = 35) |> 
     ungroup()
 }
 
@@ -238,6 +239,8 @@ apply_lags_temp <- function(data) {
 
 generate_training_df <- function(config, 
                                  met_vars = c("precipitation_flux", "air_temperature"), 
+                                 use_upstream = F, # obtain data from upstream locations for drivers
+                                 upstream_lag = 35, 
                                  flow_obs, 
                                  training_years = 5) {
   # Set up
@@ -269,6 +272,22 @@ generate_training_df <- function(config,
     group_by(site_id, inflow_name, variable) |> 
     mutate(observation = imputeTS::na_interpolation(observation))
   
+  # Get upstream observations ---------------
+  if (use_upstream) {
+    message('Using upstream data')
+    upstream <- read_csv(paste0("https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=2020-01-01%2000%3A00&EndTime=", Sys.Date(), "%2000%3A00&TimeZone=0&Calendar=CALENDARYEAR&Interval=Daily&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Discharge.Master--Daily%20Calculation--ML%2Fday%40A4261001&Datasets[0].Calculation=Minimum&Datasets[0].UnitId=239&_=1731560927692"),
+             skip = 5, col_names = c('date', 'end', 'QSA'), show_col_types = F) |> 
+      select(date, QSA) |> 
+      mutate(QSA = log(QSA), 
+             QSA_lag := lag(QSA, n = upstream_lag))  |> 
+      dplyr::filter(date < reference_date) |> 
+      dplyr::slice(upstream_lag+1:n()) |> # removes the rows without a lag value
+      mutate('QSA_lag_{upstream_lag}' := imputeTS::na_interpolation(QSA_lag)) |> 
+      select(date, glue::glue('QSA_lag_{upstream_lag}'))
+  } else {
+    upstream <- data.frame(date = unique(inflow_targets$date))
+  }
+  
   
   # Generate training df -----------
   training_df <- met_s3_historical |> 
@@ -283,6 +302,7 @@ generate_training_df <- function(config,
       #threeday_temp = RcppRoll::roll_sum(temperature, n = 3, fill = NA, align = "right"), # calculate a 3-day rolling sum
       doy = lubridate::yday(date)) |> 
     left_join(inflow_targets, by = c('date')) |> # combine with the inflow observations
+    left_join(upstream, by = c('date')) |>  # combine with upstream
     dplyr::filter(date < reference_date)
   
   return(training_df)
@@ -294,6 +314,8 @@ generate_training_df <- function(config,
 #' @param met_vars which NOAA variables are needed
 #' @return A dataframe.
 generate_forecast_df <- function(met_vars,
+                                 use_upstream = F,
+                                 upstream_lag = 35,
                                  config) {
   
   # Set up
@@ -322,21 +344,38 @@ generate_forecast_df <- function(met_vars,
     collect() |> 
     mutate(variable = ifelse(variable == "precipitation_flux", "precipitation", variable),
            variable = ifelse(variable == "air_temperature", "temperature_2m", variable),
-           prediction = ifelse(variable == "temperature_2m", prediction - 273.15, prediction))
-  
-  
-  # Generate forecast df ------------
-  forecast_df <-  met_s3_future |> 
+           prediction = ifelse(variable == "temperature_2m", prediction - 273.15, prediction)) |> 
     filter(datetime > reference_date - days(16)) |> # need up to 15 days before to calculate the rolling window
     pivot_wider(names_from = variable, values_from = prediction) |> 
     mutate(date = lubridate::as_date(datetime)) |> 
     reframe(precip = sum(precipitation, na.rm = TRUE), # what is the total per day
             temperature = median(temperature_2m, na.rm = TRUE), # what is the average temperature per day
-            .by = c("date", "parameter")) |> # retain the ensemble members
-    group_by(parameter) |> 
+            .by = c("date", "parameter")) # retain the ensemble members
+  
+  # Get upstream observations ---------------
+  if (use_upstream) {
+    if (upstream_lag >= horizon) {
+      upstream <- read_csv(paste0("https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=2020-01-01%2000%3A00&EndTime=", Sys.Date(), "%2000%3A00&TimeZone=0&Calendar=CALENDARYEAR&Interval=Daily&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Discharge.Master--Daily%20Calculation--ML%2Fday%40A4261001&Datasets[0].Calculation=Minimum&Datasets[0].UnitId=239&_=1731560927692"),
+                           skip = 5, col_names = c('date', 'end', 'QSA'), show_col_types = F) |> 
+        select(date, QSA) |> 
+        mutate(QSA = log(QSA), 
+               QSA_lag := lag(QSA, n = upstream_lag)) |> # gernate the lag (upstream - downstream)
+        dplyr::filter(as_date(date) >= as_date(reference_date)) |> 
+        mutate('QSA_lag_{upstream_lag}' := imputeTS::na_interpolation(QSA_lag)) |> 
+        select(date, glue::glue('QSA_lag_{upstream_lag}'))
+    } else {
+      stop('Horizon is longer than the lag from the upstream data. Use a longer lag or a shorter horizon.')
+    }
+  } else {
+    upstream <- data.frame(date = unique(met_s3_future$date))
+  }
+  
+  # Generate forecast df ------------
+  forecast_df <- met_s3_future |> 
     mutate(#fifteen_precip = RcppRoll::roll_sum(precip, n = 3, fill = NA,align = "right"), # calculate a 15-day rolling sum
-      #threeday_temp = RcppRoll::roll_sum(temperature, n = 3, fill = NA, align = "right"), # calculate a 3-day rolling sum
-      doy = lubridate::yday(date)) |> 
+            #threeday_temp = RcppRoll::roll_sum(temperature, n = 3, fill = NA, align = "right"), # calculate a 3-day rolling sum
+            doy = lubridate::yday(date)) |> 
+    left_join(upstream, by = c('date')) |>  # combine with upstream
     filter(date >= reference_date, 
            date <= end_date) 
   
