@@ -125,13 +125,13 @@
 &inflow
    coef_inf_entrain = 0.
    ! flow from Loc1 Wellington
-   num_inflows    =  2
-   names_of_strms =  'Murray', 'Finnis'
-   strm_hf_angle  =  65.0, 65.0
-   strmbd_slope   =  4.0, 4.0
-   strmbd_drag    =  0.0160, 0.0160
-   inflow_factor  =  1.0, 1.0
-   inflow_fl      = 'inflow1.csv', 'inflow2.csv'
+   num_inflows    =  1
+   names_of_strms =  'Murray' !'Finnis'
+   strm_hf_angle  =  65.0 !65.0
+   strmbd_slope   =  4.0 !4.0
+   strmbd_drag    =  0.0160 !0.0160
+   inflow_factor  =  1.0 !1.0
+   inflow_fl      = 'inflow1.csv' !'inflow2.csv'
    inflow_varnum  =  3
    inflow_vars    = 'FLOW','TEMP','SALT'
 /
