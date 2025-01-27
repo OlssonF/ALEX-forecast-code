@@ -40,18 +40,12 @@ readr::read_csv(file.path(lake_directory, "data_raw", "current_insitu.csv"),
 # Currently getting discharge, temp, and conductivity - data is in UTC
 options(timeout=3000)
 #Murray (Q@A4260903, WQ@A4261159)
-# download.file(paste0('https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=2015-01-01%2000%3A00&EndTime=', Sys.Date(), '%2000%3A00&TimeZone=0&Calendar=CALENDARYEAR&Interval=PointsAsRecorded&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Discharge.Master--Daily%20Read--ML%2Fday%40A4260903&Datasets[0].Calculation=Instantaneous&Datasets[0].UnitId=239&_=17305800968060'),
-#               destfile = file.path(lake_directory, "data_raw", "current_inflow_murray1.csv"))
-# 
-# download.file(paste0('https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=2015-01-01%2000%3A00&EndTime=', Sys.Date(), '%2000%3A00&TimeZone=0&Calendar=CALENDARYEAR&Interval=PointsAsRecorded&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=EC%20Corr.Best%20Available--Sensor%20near%20surface%40A4261159&Datasets[0].Calculation=Instantaneous&Datasets[0].UnitId=305&Datasets[1].DatasetName=Water%20Temp.Best%20Available--Sensor%20near%20surface%40A4261159&Datasets[1].Calculation=Instantaneous&Datasets[1].UnitId=169&_=1730580252875'),
-#               destfile = file.path(lake_directory, "data_raw", "current_inflow_murray2.csv"))
-
 download.file(paste0('https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=2015-01-01%2000%3A00&EndTime=', Sys.Date(), '%2000%3A00&TimeZone=0&Calendar=CALENDARYEAR&Interval=Hourly&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Discharge.Master--Daily%20Read--ML%2Fday%40A4260903&Datasets[0].Calculation=Aggregate&Datasets[0].UnitId=239&Datasets[1].DatasetName=EC%20Corr.Best%20Available--Sensor%20near%20surface%40A4261159&Datasets[1].Calculation=Aggregate&Datasets[1].UnitId=305&Datasets[2].DatasetName=Water%20Temp.Best%20Available--Sensor%20near%20surface%40A4261159&Datasets[2].Calculation=Aggregate&Datasets[2].UnitId=169&_=1730580709437'),
               destfile = 'current_inflow_murray.csv')
               
 #Finnis (A4261208)
-download.file(paste0("https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=2015-01-01%2000%3A00&EndTime=", Sys.Date(), "%2000%3A00&TimeZone=0&Calendar=CALENDARYEAR&Interval=Hourly&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Discharge.Best%20Available%40A4261208&Datasets[0].Calculation=Instantaneous&Datasets[0].UnitId=239&Datasets[1].DatasetName=EC%20Corr.Best%20Available%40A4261208&Datasets[1].Calculation=Instantaneous&Datasets[1].UnitId=305&Datasets[2].DatasetName=Water%20Temp.Best%20Available--Continuous%40A4261208&Datasets[2].Calculation=Instantaneous&Datasets[2].UnitId=169&_=1724767129649"),
-              destfile = file.path(lake_directory, "data_raw", "current_inflow_finnis.csv"))
+# download.file(paste0("https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=2015-01-01%2000%3A00&EndTime=", Sys.Date(), "%2000%3A00&TimeZone=0&Calendar=CALENDARYEAR&Interval=Hourly&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Discharge.Best%20Available%40A4261208&Datasets[0].Calculation=Instantaneous&Datasets[0].UnitId=239&Datasets[1].DatasetName=EC%20Corr.Best%20Available%40A4261208&Datasets[1].Calculation=Instantaneous&Datasets[1].UnitId=305&Datasets[2].DatasetName=Water%20Temp.Best%20Available--Continuous%40A4261208&Datasets[2].Calculation=Instantaneous&Datasets[2].UnitId=169&_=1724767129649"),
+#               destfile = file.path(lake_directory, "data_raw", "current_inflow_finnis.csv"))
 
 # #Bremer (A4261219)
 # download.file(paste0("https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=2020-01-01%2000%3A00&EndTime=", Sys.Date(), "%2000%3A00&TimeZone=0&Calendar=CALENDARYEAR&Interval=PointsAsRecorded&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Discharge.Best%20Available%40A4261219&Datasets[0].Calculation=Instantaneous&Datasets[0].UnitId=239&Datasets[1].DatasetName=EC%20Corr.Best%20Available%40A4261219&Datasets[1].Calculation=Instantaneous&Datasets[1].UnitId=305&Datasets[2].DatasetName=Water%20Temp.Best%20Available--Continuous%40A4261219&Datasets[2].Calculation=Instantaneous&Datasets[2].UnitId=169&_=1724767713824"), 
@@ -118,5 +112,56 @@ readr::read_csv(file.path(lake_directory, "data_raw", "current_outflow.csv"),
          datetime = lubridate::as_datetime(paste(date, '00:00:00'))) |> # assigned to midnight
   select(site_id, datetime, variable, observation) |>
   write_csv(cleaned_outflow_file)
+
+
+# Individual barrage flows
+library(httr)
+library(jsonlite)
+# Requires credentials!!!
+export_url <- 'https://water.data.sa.gov.au/api/v1/export/data-set'
+
+barrage_ids <-  c('Goolwa' = 'A4261005',
+                  'Tauwitchere' = 'A4261006',
+                  'Ewe_Island' = 'A4260571',
+                  'Mundoo' = 'A4260526',
+                  'Boundary_Creek' = 'A4260570') # this one isn't working
+
+
+barrage_outflow <- NULL
+
+for (i in 1:length(barrage_ids)) {
+  
+  if (names(barrage_ids[i]) == 'Boundary_Creek') {
+    dataset_name <- paste0( 'Discharge.Total Barrage Flow--Daily Total (ML)@', barrage_ids[i])
+  } else {
+    dataset_name <- paste0('Discharge.Total Barrage Flow--Daily Totals (ML)@', barrage_ids[i])
+  }
+  
+  
+  res <- GET(export_url, 
+             authenticate(Sys.getenv("SAWATER_API_USERNAME"),
+                          Sys.getenv("SAWATER_API_PASSWORD")), 
+             query = list(DataSet = dataset_name,
+                          StartTime = '2014-01-01 00:00:00',
+                          EndTime = '2024-12-31 00:00:00',
+                          Interval = 'Daily'))
+  
+  data_convert <- jsonlite::fromJSON(rawToChar(res$content))
+  
+  pulled_data <- data_convert$points
+  
+  barrage_outflow <- pulled_data |> 
+    mutate(outflow_name = names(barrage_ids[i]),
+           datetime = paste(as_date(as_datetime(timestamp, tz = "Australia/Adelaide")), "00:00:00"), 
+           variable = "FLOW",
+           observation = value) |> 
+    select(datetime, value, variable, outflow_name) |> 
+    bind_rows(barrage_outflow)
+  message(names(barrage_ids[i]))
+}
+
+cleaned_barrages_file <- file.path(config$file_path$qaqc_data_directory, paste0(config$location$site_id, "-targets-barrages.csv"))
+
+write_csv(barrage_outflow, cleaned_barrages_file)
 
 setwd(lake_directory)
