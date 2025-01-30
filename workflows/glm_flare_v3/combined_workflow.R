@@ -8,7 +8,7 @@ forecast_site <- "ALEX"
 configure_run_file <- "configure_run.yml"
 config_set_name <- "glm_flare_v3"
 
-fresh_run <- FALSE
+fresh_run <- TRUE
 
 Sys.setenv("AWS_DEFAULT_REGION" = "renc",
            "AWS_S3_ENDPOINT" = "osn.xsede.org",
@@ -43,11 +43,11 @@ noaa_ready <- TRUE
 
 while(noaa_ready){
   
-  
   config <- FLAREr::set_up_simulation(configure_run_file,lake_directory, config_set_name = config_set_name)
   
   # Generate inflow/outflows
-  source(file.path('workflows', config_set_name,'combined_flow_drivers_workflow.R')) # combined flow drivers
+  source(file.path('workflows', config_set_name,'new_baseline_inflow_workflow.R')) 
+  # combined flow drivers - assuming inflows lagged from upstream and persistence outflow
 
   # run FLARE forecast
   output <- FLAREr::run_flare(lake_directory = lake_directory,
