@@ -58,7 +58,9 @@ horizon <- config$run_config$forecast_horizon
 # ==== Future inflow persistenceRW + XGBoost + lag_mod =====
 message('Making inflow forecast')
 # Flow model
-future_inflow_lag <- generate_flow_lag(config = config, upstream_lag = 10) |> 
+future_inflow_lag <- generate_flow_lag(config = config, 
+                                       upstream_lag = 10, 
+                                       upstream_data = 'QSA') |> 
   mutate(reference_datetime = as_date(reference_date),
          model_id = "lag_flow",
          prediction = ifelse(prediction < 0, 0, prediction),
@@ -66,6 +68,7 @@ future_inflow_lag <- generate_flow_lag(config = config, upstream_lag = 10) |>
          flow_number = 1) |> 
   filter(datetime >= as_datetime(reference_date),
          datetime <= as_datetime(reference_date) + days(horizon)) 
+
 # copy to have 31 ensemble members
 future_inflow_lag <- map_dfr(0:30, ~cbind(future_inflow_lag, parameter = .))
 
@@ -89,7 +92,7 @@ forecast_info <- hist_interp_inflow  |>
   filter(datetime < reference_date) |> # remove observations after reference_date
   summarise(last_obs = max(datetime),
             .by = c(site_id, variable, flow_number)) |> 
-  mutate(horizon = as.numeric(reference_date - last_obs + horizon)) |> 
+  mutate(horizon = as.numeric(as_date(reference_date) - last_obs + horizon)) |> 
   # what is the total horizon including missing days of observations up to the reference_date
   mutate(start_training = last_obs - days(60))
 
