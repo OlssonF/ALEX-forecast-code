@@ -187,7 +187,7 @@ generate_temp_inflow_fc <- function(config,
     mutate(parameter = 0) |> 
     select(date, prediction, parameter)
   
-  forecast_dates <- seq.Date(as_date(reference_date), length.out = horizon + 1, by = 1)
+  forecast_dates <- seq.Date(as_date(reference_date), length.out = horizon, by = 1)
   
   for (i in 1:length(forecast_dates)) {
     
