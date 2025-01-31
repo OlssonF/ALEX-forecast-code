@@ -132,14 +132,16 @@ generate_flow_inflow_fc <- function(config,
     # read in recent QSA data - this is in MLd!!!
     download_WaterDataSA <- paste0("https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=",
                                    upstream_start, "%2000%3A00&EndTime=", reference_date, "%2000%3A00&TimeZone=9.5&Calendar=CALENDARYEAR&Interval=PointsAsRecorded&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=True&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Discharge.Master--Daily%20Calculation--ML%2Fday%40A4261001&Datasets[0].Calculation=Instantaneous&Datasets[0].UnitId=241&_=1738250581759")
-    upstream_MLd <- read_csv(download_WaterDataSA, show_col_types = F,
+    download.file(download_WaterDataSA, destfile = 'data_raw/upstream.csv')
+    upstream_MLd <- read_csv('data_raw/upstream.csv', show_col_types = F,
                              skip = 5, col_names = c('datetime', 'flow')) |> 
       mutate(datetime = ymd(format(datetime, "%Y-%m-%d")))
   } else {
     # read in recent L1 data - this is in MLd!!!
     download_WaterDataSA <- paste0("https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=",
                                    upstream_start, "%2000%3A00&EndTime=", reference_date, "%2000%3A00&TimeZone=9.5&Calendar=CALENDARYEAR&Interval=PointsAsRecorded&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Discharge.Master--Daily%20Read--ML%2Fday%40A4260903&Datasets[0].Calculation=Instantaneous&Datasets[0].UnitId=241&_=1738251451037")
-    upstream_MLd <- read_csv(download_WaterDataSA, show_col_types = F,
+    download.file(download_WaterDataSA, destfile = 'data_raw/upstream.csv')
+    upstream_MLd <- read_csv('data_raw/upstream.csv', show_col_types = F,
                              skip = 5, col_names = c('datetime', 'flow')) |> 
       mutate(datetime = ymd(format(datetime, "%Y-%m-%d")))
   }
