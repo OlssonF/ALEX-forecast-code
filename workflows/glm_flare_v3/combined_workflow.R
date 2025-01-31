@@ -8,7 +8,7 @@ forecast_site <- "ALEX"
 configure_run_file <- "configure_run.yml"
 config_set_name <- "glm_flare_v3"
 
-fresh_run <- TRUE
+fresh_run <- FALSE
 
 Sys.setenv("AWS_DEFAULT_REGION" = "renc",
            "AWS_S3_ENDPOINT" = "osn.xsede.org",

@@ -124,8 +124,7 @@ barrage_ids <-  c('Goolwa' = 'A4261005',
                   'Tauwitchere' = 'A4261006',
                   'Ewe_Island' = 'A4260571',
                   'Mundoo' = 'A4260526',
-                  'Boundary_Creek' = 'A4260570') # this one isn't working
-
+                  'Boundary_Creek' = 'A4260570') 
 
 barrage_outflow <- NULL
 
