@@ -9,7 +9,7 @@
 library(fable)
 
 #' model_losses
-#' @description model the loss function based on QSA and month
+#' @description model the loss function based on QSA and month (the monthly loss in GL/m depending on the QSA in GL/d)
 #' @returns dataframe with lagged predictors
 #' @param T travel time or lag to be applied
 #' @param data dataframe with the column to be lagged
@@ -21,10 +21,11 @@ library(fable)
 #'             formula_use = "x ~ y + group", 
 #'             x = 'loss', y = 'QSA', group = 'month')
 
-model_losses <- function(model_dat = 'data_raw/modelled_losses_DEW.csv', # data used to fit model, in GL/d
+model_losses <- function(model_dat = 'data_raw/modelled_losses_DEW.csv', 
+                         # data used to fit model, in GL/m
                          formula_use = 'x ~ y + group',
                          x = 'loss', y = 'QSA', group = 'month') {
-  
+
   model_loss <- 
     read_csv(model_dat, show_col_types = F) |> 
     mutate(month = match(month, month)) |> 
@@ -32,9 +33,11 @@ model_losses <- function(model_dat = 'data_raw/modelled_losses_DEW.csv', # data 
                  names_to = y,
                  values_to = x,
                  names_prefix = 'GLd_') |> 
-    mutate({{x}} := as.numeric(.data[[x]]),
+    mutate(days_in_month = lubridate::days_in_month(month),
+           {{x}} := as.numeric(.data[[x]])/days_in_month, # convert to GL/d
            {{y}} := as.numeric(.data[[y]]),
-           {{group}} := as.factor(.data[[group]])) 
+           {{group}} := as.factor(.data[[group]])) %>% 
+    select(-days_in_month)
   
   # model_loss |> 
   #   ggplot(aes(x = qsa_flow, y = loss,colour = as.factor(month))) +
