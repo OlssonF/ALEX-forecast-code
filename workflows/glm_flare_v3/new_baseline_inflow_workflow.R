@@ -60,15 +60,17 @@ temp_fc <- generate_temp_inflow_fc(config)
 
 source('R/inflow_flow_process_temporary.R')
 # Make sure the units for the loss data are the same as for the prediction
-L_mod <- model_losses(model_dat = 'data_raw/modelled_losses_DEW.csv', # data are losses in GL/day
+L_mod <- model_losses(model_dat = 'R/helper_data/modelled_losses_DEW.csv', 
+                      # data are losses in GL/m at different rates of entitlement flow (GL/d)
                       formula_use = "x ~ y + group", 
                       x = 'loss', y = 'flow', group = 'month')
 
 
 flow_fc <- generate_flow_inflow_fc(config = config, 
-                        lag_t = 14, 
-                        upstream_location = 'QSA',
-                        L_mod = L_mod)  |> 
+                                   upstream_unit = 'MLd',
+                                   lag_t = 14, 
+                                   upstream_location = 'QSA',
+                                   L_mod = L_mod)  |> 
   mutate(parameter = 0,
          #convert from ML/d to m3/s
          prediction = prediction/86.4) |> 
@@ -123,7 +125,7 @@ future_outflow_RW <- hist_interp_outflow |>
   # generate forecast of specific horizon with 31 parameters
   fabletools::generate(h = 30, times = 31, bootstrap = T) |> 
   as_tibble() |> 
-
+  
   rename(parameter = .rep,
          prediction = .sim) |> 
   mutate(reference_datetime = as_date(reference_date),

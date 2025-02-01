@@ -10,7 +10,7 @@ library(fable)
 
 #' model_losses
 #' @description model the loss function based on QSA and month (the monthly loss in GL/m depending on the QSA in GL/d)
-#' @returns dataframe with lagged predictors
+#' @returns dataframe with lagged predictors, model fitted on ML/d
 #' @param T travel time or lag to be applied
 #' @param data dataframe with the column to be lagged
 #' @param upstream_col column name to be used as the upstream predictor
@@ -34,8 +34,8 @@ model_losses <- function(model_dat = 'data_raw/modelled_losses_DEW.csv',
                  values_to = x,
                  names_prefix = 'GLd_') |> 
     mutate(days_in_month = lubridate::days_in_month(month),
-           {{x}} := as.numeric(.data[[x]])/days_in_month, # convert to GL/d
-           {{y}} := as.numeric(.data[[y]]),
+           {{x}} := (as.numeric(.data[[x]])/days_in_month) * 1000, # convert to ML/d from GL/m
+           {{y}} := (as.numeric(.data[[y]]))*1000, # convert to ML/d from GL/d
            {{group}} := as.factor(.data[[group]])) %>% 
     select(-days_in_month)
   
@@ -67,28 +67,12 @@ model_losses <- function(model_dat = 'data_raw/modelled_losses_DEW.csv',
 #' @param L_mod fitted loss model
 #' @examples
 predict_downstream <- function(lag_t,
-                               data, # needs a datatime column, data in GL/d ######CHECK THIS
+                               data, # needs a datatime column, data in ML/d, or specify units
                                upstream_col = 'QSA',
-                               upstream_unit = 'm3s',
                                L_mod = L_mod) {
   
   
-  if (upstream_unit %in% c('m3s', 'MLd', 'GLd')) {
-    if (upstream_unit == 'm3s') {
-      # convert from m3/s to GL/d
-      data <- data |>
-        mutate("{upstream_col}" := (data[[upstream_col]] * 86.4)/1000)
-    } else if (upstream_unit == 'ML/d') {
-      # convert from mL/d to GL/d
-      data <- data |>
-        mutate("{upstream_col}" := data[[upstream_col]] /1000)
-    }
-  } else {
-    stop('units must be m3/s, ML/d or GL/d')
-  }
-  
-  
-  new_dat <- data |>
+    new_dat <- data |>
     mutate(#"{upstream_col}" := data1[upstream_col],
       month = as.factor(month(datetime)))
   
@@ -113,13 +97,13 @@ predict_downstream <- function(lag_t,
 #' @param use_QSA use QSA as the upstream location, only option at the moment
 #' @param L_mod loss model object generated using model_losses()
 #'
-#' @returns
+#' @returns forecast of inflow in MLd
 #'
 generate_flow_inflow_fc <- function(config,
                                     lag_t,
+                                    upstream_unit = 'MLd',
                                     upstream_location = 'QSA',
                                     L_mod) {
-  
   # Set up
   reference_date <- as_date(config$run_config$forecast_start_datetime)
   site_id <- config$location$site_id
@@ -149,44 +133,58 @@ generate_flow_inflow_fc <- function(config,
       mutate(datetime = ymd(format(datetime, "%Y-%m-%d")))
   }
   
-  # Make sure the upstream_data extends as long as the forecast window
-  forecast_dates <- data.frame(datetime = seq.Date(reference_date, end_date, 'day'))
-  all_upstream <- full_join(forecast_dates, upstream_MLd, by = 'datetime') |>
-    arrange(datetime) |> 
-    mutate(flow = zoo::na.locf(flow))
-  
-  # if (beyond_lag == 'ARIMA') {
-  #   
-  #   ARIMA_mod <- all_upstream |>
-  #     mutate(flow = zoo::na.approx(flow, na.rm = F, rule = 1:2, maxgap = 5)) |>
-  #     as_tsibble(index = 'datetime') |>
-  #     na.omit() |> 
-  #     model(ARIMA = ARIMA(flow))
-  #   
-  #   # calculate how long the horizon will be to estimate using the arima model
-  #   arima_horizon <- horizon - lag_t
-  #   
-  #   ARIMA_fc <- ARIMA_mod |>
-  #     forecast(h = arima_horizon) |>
-  #     mutate(parameter = 1) |> 
-  #     rename(flow = .mean) |>
-  #     as_tibble()
-  # }
-  
-  predictions <- predict_downstream(lag_t = lag_t, # need data to extend back at least this days before forecast date
-                                    data = all_upstream,
-                                    upstream_col = 'flow',
-                                    upstream_unit = 'MLd',
-                                    L_mod = L_mod) |>
-    filter(datetime %in% forecast_dates$datetime) |> 
-    mutate(reference_date = as_date(reference_date),
-           datetime = as_date(datetime),
-           model_id = 'process_flow',
-           variable = 'FLOW',
-           flow_number = 1) |> 
-    select(any_of(c('datetime', 'prediction', 'reference_date', 'model_id', 
-                    'variable', 'flow_number', 'parameter'))) 
-  
-  
-  return(predictions)
+  # convert units
+  if (upstream_unit %in% c('m3s', 'MLd', 'GLd')) {
+    if (upstream_unit == 'm3s') {
+      # convert from m3/s to ML/d
+      data <- data |>
+        mutate("{upstream_col}" := (data[[upstream_col]] * 86.4))
+    } else if (upstream_unit == 'GL/d') {
+      # convert from GL/d to ML/d
+      data <- data |>
+        mutate("{upstream_col}" := data[[upstream_col]] * 1000)
+    }
+  } else {
+    stop('units must be m3/s, ML/d or GL/d')
+  }
+    
+    # Make sure the upstream_data extends as long as the forecast window - use persistence
+    forecast_dates <- data.frame(datetime = seq.Date(reference_date, end_date, 'day'))
+    all_upstream <- full_join(forecast_dates, upstream_MLd, by = 'datetime') |>
+      arrange(datetime) |> 
+      mutate(flow = zoo::na.locf(flow))
+    
+    # if (beyond_lag == 'ARIMA') {
+    #   
+    #   ARIMA_mod <- all_upstream |>
+    #     mutate(flow = zoo::na.approx(flow, na.rm = F, rule = 1:2, maxgap = 5)) |>
+    #     as_tsibble(index = 'datetime') |>
+    #     na.omit() |> 
+    #     model(ARIMA = ARIMA(flow))
+    #   
+    #   # calculate how long the horizon will be to estimate using the arima model
+    #   arima_horizon <- horizon - lag_t
+    #   
+    #   ARIMA_fc <- ARIMA_mod |>
+    #     forecast(h = arima_horizon) |>
+    #     mutate(parameter = 1) |> 
+    #     rename(flow = .mean) |>
+    #     as_tibble()
+    # }
+    
+    predictions <- predict_downstream(lag_t = lag_t, # need data to extend back at least this days before forecast date
+                                      data = all_upstream,
+                                      upstream_col = 'flow',
+                                      L_mod = L_mod) |>
+      filter(datetime %in% forecast_dates$datetime) |> 
+      mutate(reference_date = as_date(reference_date),
+             datetime = as_date(datetime),
+             model_id = 'process_flow',
+             variable = 'FLOW',
+             flow_number = 1) |> 
+      select(any_of(c('datetime', 'prediction', 'reference_date', 'model_id', 
+                      'variable', 'flow_number', 'parameter'))) 
+    
+    
+    return(predictions)
 }
