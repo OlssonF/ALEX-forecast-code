@@ -8,7 +8,7 @@ forecast_site <- "ALEX"
 configure_run_file <- "configure_run.yml"
 config_set_name <- "glm_flare_v3"
 
-fresh_run <- FALSE
+fresh_run <- TRUE
 
 Sys.setenv("AWS_DEFAULT_REGION" = "renc",
            "AWS_S3_ENDPOINT" = "osn.xsede.org",
@@ -70,8 +70,8 @@ while(noaa_ready){
                             configure_flare = config$run_config$configure_flare,
                             configure_obs = config$run_config$configure_obs,
                             use_s3 = config$run_config$use_s3,
-                            bucket = config$s3$warm_start$bucket,
-                            endpoint = config$s3$warm_start$endpoint,
+                            bucket = config$s3$restart$bucket,
+                            endpoint = config$s3$restart$endpoint,
                             use_https = TRUE)
   
   #RCurl::url.exists("https://hc-ping.com/31c3e142-8f8c-42ae-9edc-d277adb94b31", timeout = 5)
