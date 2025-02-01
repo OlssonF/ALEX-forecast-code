@@ -128,39 +128,47 @@ barrage_ids <-  c('Goolwa' = 'A4261005',
 
 barrage_outflow <- NULL
 
-for (i in 1:length(barrage_ids)) {
-  
-  if (names(barrage_ids[i]) == 'Boundary_Creek') {
-    dataset_name <- paste0( 'Discharge.Total Barrage Flow--Daily Total (ML)@', barrage_ids[i])
-  } else {
-    dataset_name <- paste0('Discharge.Total Barrage Flow--Daily Totals (ML)@', barrage_ids[i])
+# skip if api credentials not set up
+if (Sys.getenv("SAWATER_API_USERNAME") != "") {
+  message('using API for barrage data')
+  for (i in 1:length(barrage_ids)) {
+    
+    if (names(barrage_ids[i]) == 'Boundary_Creek') {
+      dataset_name <- paste0( 'Discharge.Total Barrage Flow--Daily Total (ML)@', barrage_ids[i])
+    } else {
+      dataset_name <- paste0('Discharge.Total Barrage Flow--Daily Totals (ML)@', barrage_ids[i])
+    }
+    
+    
+    res <- GET(export_url, 
+               authenticate(Sys.getenv("SAWATER_API_USERNAME"),
+                            Sys.getenv("SAWATER_API_PASSWORD")), 
+               query = list(DataSet = dataset_name,
+                            StartTime = '2014-01-01 00:00:00',
+                            EndTime = '2024-12-31 00:00:00',
+                            Interval = 'Daily'))
+    
+    data_convert <- jsonlite::fromJSON(rawToChar(res$content))
+    
+    pulled_data <- data_convert$points
+    
+    barrage_outflow <- pulled_data |> 
+      mutate(outflow_name = names(barrage_ids[i]),
+             datetime = paste(as_date(as_datetime(timestamp, tz = "Australia/Adelaide")), "00:00:00"), 
+             variable = "FLOW",
+             observation = value) |> 
+      select(datetime, value, variable, outflow_name) |> 
+      bind_rows(barrage_outflow)
+    message(names(barrage_ids[i]))
   }
   
+  cleaned_barrages_file <- file.path(config$file_path$qaqc_data_directory, paste0(config$location$site_id, "-targets-barrages.csv"))
   
-  res <- GET(export_url, 
-             authenticate(Sys.getenv("SAWATER_API_USERNAME"),
-                          Sys.getenv("SAWATER_API_PASSWORD")), 
-             query = list(DataSet = dataset_name,
-                          StartTime = '2014-01-01 00:00:00',
-                          EndTime = '2024-12-31 00:00:00',
-                          Interval = 'Daily'))
+  write_csv(barrage_outflow, cleaned_barrages_file)
   
-  data_convert <- jsonlite::fromJSON(rawToChar(res$content))
   
-  pulled_data <- data_convert$points
-  
-  barrage_outflow <- pulled_data |> 
-    mutate(outflow_name = names(barrage_ids[i]),
-           datetime = paste(as_date(as_datetime(timestamp, tz = "Australia/Adelaide")), "00:00:00"), 
-           variable = "FLOW",
-           observation = value) |> 
-    select(datetime, value, variable, outflow_name) |> 
-    bind_rows(barrage_outflow)
-  message(names(barrage_ids[i]))
+} else {
+  message('skipping barrage api data, credentials missing')
 }
-
-cleaned_barrages_file <- file.path(config$file_path$qaqc_data_directory, paste0(config$location$site_id, "-targets-barrages.csv"))
-
-write_csv(barrage_outflow, cleaned_barrages_file)
 
 setwd(lake_directory)
