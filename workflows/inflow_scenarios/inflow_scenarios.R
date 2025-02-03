@@ -35,6 +35,31 @@ hist_interp_inflow <- interpolate_targets(targets = 'ALEX-targets-inflow.csv',
   # use only a single inflow
   filter(flow_number == 1)
 
+# These observations for flow are from the SA border - need to apply the loss model!
+hist_interp_upstream_flow <- hist_interp_inflow |> 
+  filter(variable == 'FLOW') |> 
+  rename(flow = prediction)
+
+# Make sure the units for the loss data are the same as for the prediction
+L_mod <- model_losses(model_dat = 'R/helper_data/modelled_losses_DEW.csv', 
+                      # data are losses in GL/m at different rates of entitlement flow (GL/d)
+                      formula_use = "x ~ y + group", 
+                      x = 'loss', y = 'flow', group = 'month')
+
+hist_interp_W_flow <- predict_downstream(lag_t = 14, 
+                                         data = hist_interp_upstream_flow, 
+                                         upstream_col = 'flow',
+                                         L_mod = L_mod) |> 
+  mutate(prediction = prediction / 86.4,
+         variable = 'FLOW', 
+         site_id = site_id, 
+         flow_number = 1, 
+         parameter = 1) # convert from ML/d to m3/s
+# combine with WQ vars
+
+hist_interp_inflow <- filter(hist_interp_inflow, variable != 'FLOW') |> 
+  full_join(hist_interp_W_flow, 
+            by = join_by(site_id, flow_number, datetime, variable, prediction, parameter))
 # Write the interpolated data as the historical file
 arrow::write_dataset(hist_interp_inflow,
                      glue::glue(config$flows$local_inflow_directory, "/", config$flows$historical_inflow_model))
@@ -165,14 +190,15 @@ flow_fc_scenario_faster <- full_join(flow_fc, ent_fc, by = join_by(datetime, pre
 # Step 4: write or save for use in FLARE ---------
 message('writing scenario forecasts')
 ## Entitlement flow scenario
-scenario_model1 <- str_replace(config$flows$future_inflow_model, pattern = 'combined_inflow', 'entitlement_inflow')
+scenario_model1 <- "future/model_id=entitlement_inflow/reference_date={reference_date}/site_id={site_id}"
 
 flow_fc_scenario |>
   select(datetime, base_ent) |> 
   rename(prediction = base_ent) |> 
   # make sure it has the same number of parameter values as the WQ forecasts!!
   reframe(parameter=seq(0,30,1), .by = everything()) |>
-  mutate(reference_date = as_date(reference_date),
+  mutate(prediction = prediction / 86.4, ### CONVERT TO ML/DAY
+         reference_date = as_date(reference_date),
          datetime = as_date(datetime),
          variable = 'FLOW',
          flow_number = 1) |>
@@ -186,14 +212,15 @@ flow_fc_scenario |>
                                   "/", scenario_model1))
 
 ## Eflow scenario
-scenario_model2 <- str_replace(config$flows$future_inflow_model, pattern = 'combined_inflow', 'eflow_inflow')
+scenario_model2 <- "future/model_id=eflow_inflow/reference_date={reference_date}/site_id={site_id}"
 
 flow_fc_scenario |>
   select(datetime, base_eflow) |> 
   rename(prediction = base_eflow) |> 
   # make sure it has the same number of parameter values as the WQ forecasts!!
   reframe(parameter=seq(0,30,1), .by = everything()) |>
-  mutate(reference_date = as_date(reference_date),
+  mutate(prediction = prediction / 86.4, ### CONVERT TO ML/DAY
+         reference_date = as_date(reference_date),
          datetime = as_date(datetime),
          variable = 'FLOW',
          flow_number = 1) |>
