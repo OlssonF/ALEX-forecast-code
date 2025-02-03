@@ -39,10 +39,15 @@ readr::read_csv(file.path(lake_directory, "data_raw", "current_insitu.csv"),
 # inflow driver observations ####
 # Currently getting discharge, temp, and conductivity - data is in UTC
 options(timeout=3000)
-#Murray (Q@A4260903, WQ@A4261159)
-download.file(paste0('https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=2015-01-01%2000%3A00&EndTime=', Sys.Date(), '%2000%3A00&TimeZone=0&Calendar=CALENDARYEAR&Interval=Hourly&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Discharge.Master--Daily%20Read--ML%2Fday%40A4260903&Datasets[0].Calculation=Aggregate&Datasets[0].UnitId=239&Datasets[1].DatasetName=EC%20Corr.Best%20Available--Sensor%20near%20surface%40A4261159&Datasets[1].Calculation=Aggregate&Datasets[1].UnitId=305&Datasets[2].DatasetName=Water%20Temp.Best%20Available--Sensor%20near%20surface%40A4261159&Datasets[2].Calculation=Aggregate&Datasets[2].UnitId=169&_=1730580709437'),
-              destfile = 'current_inflow_murray.csv')
-              
+#Murray (Q@A4261001, WQ@A4261159) Not using Q@A4260903 - Lock 1
+# download.file(paste0('https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=2015-01-01%2000%3A00&EndTime=', Sys.Date(), '%2000%3A00&TimeZone=0&Calendar=CALENDARYEAR&Interval=Hourly&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Discharge.Master--Daily%20Read--ML%2Fday%40A4261001&Datasets[0].Calculation=Aggregate&Datasets[0].UnitId=239&Datasets[1].DatasetName=EC%20Corr.Best%20Available--Sensor%20near%20surface%40A4261159&Datasets[1].Calculation=Aggregate&Datasets[1].UnitId=305&Datasets[2].DatasetName=Water%20Temp.Best%20Available--Sensor%20near%20surface%40A4261159&Datasets[2].Calculation=Aggregate&Datasets[2].UnitId=169&_=1730580709437'),
+#               destfile = 'current_inflow_murray.csv')
+
+# reads in discharge from SA border in ML/day - this is used in the inflow models (including historical)
+download.file(paste0("https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=2021-01-01%2000%3A00&EndTime=", Sys.Date(), "%2000%3A00&TimeZone=0&Calendar=CALENDARYEAR&Interval=Daily&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Discharge.Master--Daily%20Calculation--ML%2Fday%40A4261001&Datasets[0].Calculation=Aggregate&Datasets[0].UnitId=241&Datasets[1].DatasetName=EC%20Corr.Best%20Available--Sensor%20near%20surface%40A4261159&Datasets[1].Calculation=Aggregate&Datasets[1].UnitId=305&Datasets[2].DatasetName=Water%20Temp.Best%20Available--Sensor%20near%20surface%40A4261159&Datasets[2].Calculation=Aggregate&Datasets[2].UnitId=169&_=1730580709437"),
+              destfile = "current_inflow_murray.csv")
+
+
 #Finnis (A4261208)
 # download.file(paste0("https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=2015-01-01%2000%3A00&EndTime=", Sys.Date(), "%2000%3A00&TimeZone=0&Calendar=CALENDARYEAR&Interval=Hourly&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Discharge.Best%20Available%40A4261208&Datasets[0].Calculation=Instantaneous&Datasets[0].UnitId=239&Datasets[1].DatasetName=EC%20Corr.Best%20Available%40A4261208&Datasets[1].Calculation=Instantaneous&Datasets[1].UnitId=305&Datasets[2].DatasetName=Water%20Temp.Best%20Available--Continuous%40A4261208&Datasets[2].Calculation=Instantaneous&Datasets[2].UnitId=169&_=1724767129649"),
 #               destfile = file.path(lake_directory, "data_raw", "current_inflow_finnis.csv"))

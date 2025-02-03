@@ -3,6 +3,9 @@
 # Historical ----------------------------------
 # Generate some simple historic flows based on the targets
 source("R/interpolate_targets.R")
+source('R/inflow_salt_xgboost_temporary.R')
+source('R/inflow_temperature_xgboost_temporary.R')
+source('R/inflow_flow_process_temporary.R')
 
 site_id <- 'ALEX'
 message('Making historical flows')
@@ -21,6 +24,31 @@ hist_interp_inflow <- interpolate_targets(targets = 'ALEX-targets-inflow.csv',
   # use only a single inflow
   filter(flow_number == 1)
 
+# These observations for flow are from the SA border - need to apply the loss model!
+hist_interp_upstream_flow <- hist_interp_inflow |> 
+  filter(variable == 'FLOW') |> 
+  rename(flow = prediction)
+
+# Make sure the units for the loss data are the same as for the prediction
+L_mod <- model_losses(model_dat = 'R/helper_data/modelled_losses_DEW.csv', 
+                      # data are losses in GL/m at different rates of entitlement flow (GL/d)
+                      formula_use = "x ~ y + group", 
+                      x = 'loss', y = 'flow', group = 'month')
+
+hist_interp_W_flow <- predict_downstream(lag_t = 14, 
+                                                data = hist_interp_upstream_flow, 
+                                                upstream_col = 'flow',
+                                                L_mod = L_mod) |> 
+  mutate(prediction = prediction / 86.4,
+         variable = 'FLOW', 
+         site_id = site_id, 
+         flow_number = 1, 
+         parameter = 1) # convert from ML/d to m3/s
+# combine with WQ vars
+
+hist_interp_inflow <- filter(hist_interp_inflow, variable != 'FLOW') |> 
+  full_join(hist_interp_W_flow, 
+            by = join_by(site_id, flow_number, datetime, variable, prediction, parameter))
 # Write the interpolated data as the historical file
 arrow::write_dataset(hist_interp_inflow,
                      glue::glue(config$flows$local_inflow_directory, "/", config$flows$historical_inflow_model))
@@ -51,14 +79,11 @@ site_id <- 'ALEX'
 reference_date <- as_date(config$run_config$forecast_start_datetime)
 horizon <- config$run_config$forecast_horizon
 
-source('R/inflow_salt_xgboost_temporary.R')
 salt_fc <- generate_salt_inflow_fc(config)
 
-source('R/inflow_temperature_xgboost_temporary.R')
 temp_fc <- generate_temp_inflow_fc(config)
 
 
-source('R/inflow_flow_process_temporary.R')
 # Make sure the units for the loss data are the same as for the prediction
 L_mod <- model_losses(model_dat = 'R/helper_data/modelled_losses_DEW.csv', 
                       # data are losses in GL/m at different rates of entitlement flow (GL/d)
