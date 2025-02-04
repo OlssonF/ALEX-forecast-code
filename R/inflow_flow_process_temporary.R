@@ -25,7 +25,7 @@ model_losses <- function(model_dat = 'data_raw/modelled_losses_DEW.csv',
                          # data used to fit model, in GL/m
                          formula_use = 'x ~ y + group',
                          x = 'loss', y = 'QSA', group = 'month') {
-
+  
   model_loss <- 
     read_csv(model_dat, show_col_types = F) |> 
     mutate(month = match(month, month)) |> 
@@ -72,12 +72,11 @@ predict_downstream <- function(lag_t,
                                L_mod = L_mod) {
   
   
-    new_dat <- data |>
+  new_dat <- data |>
     mutate(#"{upstream_col}" := data1[upstream_col],
       month = as.factor(month(datetime)))
   
-  predicted_loss <- predict(L_mod, newdata = new_dat)
-  
+  predicted_loss <- predict(L_mod, newdata = new_dat) 
   
   upstream_lagged <- data |> 
     mutate(upstream_lag = lag(.data[[upstream_col]], lag_t)) # lagged_upstream (Qup(t-T)) 
@@ -101,6 +100,7 @@ predict_downstream <- function(lag_t,
 #'
 generate_flow_inflow_fc <- function(config,
                                     lag_t,
+                                    n_members = 1, 
                                     upstream_unit = 'MLd',
                                     upstream_location = 'QSA',
                                     L_mod) {
@@ -110,7 +110,7 @@ generate_flow_inflow_fc <- function(config,
   start_training <- reference_date - years(5)
   horizon <- config$run_config$forecast_horizon
   end_date <- reference_date + days(horizon)
-  upstream_start <- reference_date - days(lag_t + 5) # give buffer
+  upstream_start <- reference_date - days(max(lag_t) + 5) # give buffer
   
   # which upstream location to use
   if (!upstream_location %in% c('L1', 'QSA')) {
@@ -118,7 +118,7 @@ generate_flow_inflow_fc <- function(config,
   } else if (upstream_location == 'QSA') {
     # read in recent QSA data - this is in MLd!!!
     download_WaterDataSA <- paste0("https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=",
-                                   upstream_start, "%2000%3A00&EndTime=", reference_date, "%2000%3A00&TimeZone=9.5&Calendar=CALENDARYEAR&Interval=PointsAsRecorded&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=True&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Discharge.Master--Daily%20Calculation--ML%2Fday%40A4261001&Datasets[0].Calculation=Instantaneous&Datasets[0].UnitId=241&_=1738250581759")
+                                   upstream_start, "%2000%3A00&EndTime=", reference_date, "%2000%3A00&TimeZone=9.5&Calendar=CALENDARYEAR&Interval=PointsAsRecorded&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Discharge.Master--Daily%20Calculation--ML%2Fday%40A4261001&Datasets[0].Calculation=Instantaneous&Datasets[0].UnitId=241&_=1738250581759")
     download.file(download_WaterDataSA, destfile = 'data_raw/upstream.csv')
     upstream_MLd <- read_csv('data_raw/upstream.csv', show_col_types = F,
                              skip = 5, col_names = c('datetime', 'flow')) |> 
@@ -147,37 +147,44 @@ generate_flow_inflow_fc <- function(config,
   } else {
     stop('units must be m3/s, ML/d or GL/d')
   }
+  
+  # Make sure the upstream_data extends as long as the forecast window - use persistence
+  forecast_dates <- data.frame(datetime = seq.Date(reference_date, end_date, 'day'))
+  all_upstream <- full_join(forecast_dates, upstream_MLd, by = 'datetime') |>
+    arrange(datetime) |> 
+    mutate(flow = zoo::na.locf(flow))
+  
+  # if (beyond_lag == 'ARIMA') {
+  #   
+  #   ARIMA_mod <- all_upstream |>
+  #     mutate(flow = zoo::na.approx(flow, na.rm = F, rule = 1:2, maxgap = 5)) |>
+  #     as_tsibble(index = 'datetime') |>
+  #     na.omit() |> 
+  #     model(ARIMA = ARIMA(flow))
+  #   
+  #   # calculate how long the horizon will be to estimate using the arima model
+  #   arima_horizon <- horizon - lag_t
+  #   
+  #   ARIMA_fc <- ARIMA_mod |>
+  #     forecast(h = arima_horizon) |>
+  #     mutate(parameter = 1) |> 
+  #     rename(flow = .mean) |>
+  #     as_tibble()
+  # }
+  
+  # Estimate the downstream flow for each ensemble member based on a randomly selected lag
+  downstream_fc <- data.frame()
+  
+  for (m in 1:n_members) {
+    lag_use <- sample(lag_t, 1) # randomly select a lag from the range given
     
-    # Make sure the upstream_data extends as long as the forecast window - use persistence
-    forecast_dates <- data.frame(datetime = seq.Date(reference_date, end_date, 'day'))
-    all_upstream <- full_join(forecast_dates, upstream_MLd, by = 'datetime') |>
-      arrange(datetime) |> 
-      mutate(flow = zoo::na.locf(flow))
-    
-    # if (beyond_lag == 'ARIMA') {
-    #   
-    #   ARIMA_mod <- all_upstream |>
-    #     mutate(flow = zoo::na.approx(flow, na.rm = F, rule = 1:2, maxgap = 5)) |>
-    #     as_tsibble(index = 'datetime') |>
-    #     na.omit() |> 
-    #     model(ARIMA = ARIMA(flow))
-    #   
-    #   # calculate how long the horizon will be to estimate using the arima model
-    #   arima_horizon <- horizon - lag_t
-    #   
-    #   ARIMA_fc <- ARIMA_mod |>
-    #     forecast(h = arima_horizon) |>
-    #     mutate(parameter = 1) |> 
-    #     rename(flow = .mean) |>
-    #     as_tibble()
-    # }
-    
-    predictions <- predict_downstream(lag_t = lag_t, # need data to extend back at least this days before forecast date
+    predictions <- predict_downstream(lag_t = lag_use, # need data to extend back at least this days before forecast date
                                       data = all_upstream,
                                       upstream_col = 'flow',
                                       L_mod = L_mod) |>
       filter(datetime %in% forecast_dates$datetime) |> 
       mutate(reference_date = as_date(reference_date),
+             parameter = m - 1, 
              datetime = as_date(datetime),
              model_id = 'process_flow',
              variable = 'FLOW',
@@ -185,6 +192,10 @@ generate_flow_inflow_fc <- function(config,
       select(any_of(c('datetime', 'prediction', 'reference_date', 'model_id', 
                       'variable', 'flow_number', 'parameter'))) 
     
-    
-    return(predictions)
+    downstream_fc <- bind_rows(downstream_fc, predictions)
+  }
+  
+  
+  
+  return(downstream_fc)
 }
