@@ -20,22 +20,28 @@ library(fable)
 #'model_losses(model_dat = 'DEW_data/modelled_losses_DEW.csv',
 #'             formula_use = "x ~ y + group", 
 #'             x = 'loss', y = 'QSA', group = 'month')
+#'
+#' @param model_dat where are the helper data saved
+#' @param formula_use what is the generic formula (can include x, y, and grouping variable for interactions)
+#' @param x predictor
+#' @param y response
+#' @param group grouping var, Month probably
 
-model_losses <- function(model_dat = 'data_raw/modelled_losses_DEW.csv', 
+model_losses <- function(model_dat = 'R/helper_data/modelled_losses_DEW.csv', 
                          # data used to fit model, in GL/m
-                         formula_use = 'x ~ y + group',
-                         x = 'loss', y = 'QSA', group = 'month') {
+                         formula_use = 'y ~ x + group',
+                         y = 'loss', x = 'QSA', group = 'month') {
   
   model_loss <- 
     read_csv(model_dat, show_col_types = F) |> 
     mutate(month = match(month, month)) |> 
     pivot_longer(starts_with('GLd_'), 
-                 names_to = y,
-                 values_to = x,
+                 names_to = x,
+                 values_to = y,
                  names_prefix = 'GLd_') |> 
     mutate(days_in_month = lubridate::days_in_month(month),
-           {{x}} := (as.numeric(.data[[x]])/days_in_month) * 1000, # convert to ML/d from GL/m
-           {{y}} := (as.numeric(.data[[y]]))*1000, # convert to ML/d from GL/d
+           {{y}} := (as.numeric(.data[[x]])/days_in_month) * 1000, # convert to ML/d from GL/m
+           {{x}} := (as.numeric(.data[[y]]))*1000, # convert to ML/d from GL/d
            {{group}} := as.factor(.data[[group]])) %>% 
     select(-days_in_month)
   
@@ -61,10 +67,12 @@ model_losses <- function(model_dat = 'data_raw/modelled_losses_DEW.csv',
 #' predict_downstream
 #'
 #' @returns dataframe with lagged predictors
+#'
 #' @param lag_t travel time or lag to be applied (T)
 #' @param data dataframe with the column to be lagged and a datetime column, requires explicit gaps
 #' @param upstream_col column name to be used as the upstream predictor
 #' @param L_mod fitted loss model
+#'
 #' @examples
 predict_downstream <- function(lag_t,
                                data, # needs a datatime column, data in ML/d, or specify units
@@ -91,10 +99,12 @@ predict_downstream <- function(lag_t,
 
 #' Title
 #'
-#' @param config
-#' @param lag_t number of days to lag the upstream value 
-#' @param use_QSA use QSA as the upstream location, only option at the moment
+#' @param config FLARE config file read in
+#' @param lag_t number of days to lag the upstream value, can be a vector of possible lags or a single value 
 #' @param L_mod loss model object generated using model_losses()
+#' @param n_members how many ensemble members to generate
+#' @param upstream_unit what are the units of upstream, default is MLd - if not it will do a conversion
+#' @param upstream_location which gauging station to use the lags of, default is QSA
 #'
 #' @returns forecast of inflow in MLd
 #'
@@ -176,7 +186,8 @@ generate_flow_inflow_fc <- function(config,
   downstream_fc <- data.frame()
   
   for (m in 1:n_members) {
-    lag_use <- sample(lag_t, 1) # randomly select a lag from the range given
+    lag_use <- lag_t[sample(length(lag_t), size = 1)] # randomly select a lag from the range given
+    # Note: if you just do sample(lag_t, size = 1) it gives the wrong answer when the length(lag_T) == 1
     
     predictions <- predict_downstream(lag_t = lag_use, # need data to extend back at least this days before forecast date
                                       data = all_upstream,
