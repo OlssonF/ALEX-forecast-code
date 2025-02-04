@@ -15,6 +15,8 @@ Sys.setenv("AWS_DEFAULT_REGION" = "renc",
            "USE_HTTPS" = TRUE,
            'GLM_PATH' = 'GLM3r')
 
+source('R/generate_forecast_score_arrow.R')
+
 message("Checking for NOAA forecasts")
 
 config <- FLAREr::set_up_simulation(configure_run_file,lake_directory, config_set_name = config_set_name,
