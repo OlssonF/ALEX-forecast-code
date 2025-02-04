@@ -87,18 +87,19 @@ temp_fc <- generate_temp_inflow_fc(config)
 # Make sure the units for the loss data are the same as for the prediction
 L_mod <- model_losses(model_dat = 'R/helper_data/modelled_losses_DEW.csv', 
                       # data are losses in GL/m at different rates of entitlement flow (GL/d)
-                      formula_use = "x ~ y + group", 
-                      x = 'loss', y = 'flow', group = 'month')
+                      formula_use = "y ~ x + group", 
+                      y = 'loss', x = 'flow', group = 'month')
 
 
 flow_fc <- generate_flow_inflow_fc(config = config, 
                                    upstream_unit = 'MLd',
-                                   lag_t = 14, 
+                                   lag_t = c(9:14), 
+                                   n_members = 10,
                                    upstream_location = 'QSA',
-                                   L_mod = L_mod)  |> 
-  mutate(parameter = 0,
+                                   L_mod = L_mod) |> 
+  mutate(#parameter = 0,
          #convert from ML/d to m3/s
-         prediction = prediction/86.4) |> 
+         prediction = prediction/86.4) #|> 
   # make sure it has the same number of parameter values as the other forecasts!!
   reframe(parameter=unique(salt_fc$parameter), .by = everything())
 
