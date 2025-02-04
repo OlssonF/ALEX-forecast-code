@@ -8,15 +8,6 @@
 
 library(fable)
 
-#' model_losses
-#' @description model the loss function based on QSA and month (the monthly loss in GL/m depending on the QSA in GL/d)
-#' @returns dataframe with lagged predictors, model fitted on ML/d
-#' @param T travel time or lag to be applied
-#' @param data dataframe with the column to be lagged
-#' @param upstream_col column name to be used as the upstream predictor
-#' @param L_mod fitted loss model
-#' @examples 
-
 #'model_losses(model_dat = 'DEW_data/modelled_losses_DEW.csv',
 #'             formula_use = "x ~ y + group", 
 #'             x = 'loss', y = 'QSA', group = 'month')
@@ -25,13 +16,14 @@ library(fable)
 #' @param formula_use what is the generic formula (can include x, y, and grouping variable for interactions)
 #' @param x predictor
 #' @param y response
+#' @param obs_unc amount of obs uncertainty, applied as a percent of the mean loss 
 #' @param group grouping var, Month probably
 
 model_losses <- function(model_dat = 'R/helper_data/modelled_losses_DEW.csv', 
                          # data used to fit model, in GL/m
+                         obs_unc = 0, # how much obs uncertainty (proportion of total)
                          formula_use = 'y ~ x + group',
                          y = 'loss', x = 'QSA', group = 'month') {
-  
   model_loss <- 
     read_csv(model_dat, show_col_types = F) |> 
     mutate(month = match(month, month)) |> 
@@ -40,10 +32,17 @@ model_losses <- function(model_dat = 'R/helper_data/modelled_losses_DEW.csv',
                  values_to = y,
                  names_prefix = 'GLd_') |> 
     mutate(days_in_month = lubridate::days_in_month(month),
-           {{y}} := (as.numeric(.data[[x]])/days_in_month) * 1000, # convert to ML/d from GL/m
-           {{x}} := (as.numeric(.data[[y]]))*1000, # convert to ML/d from GL/d
+           {{y}} := (as.numeric(.data[[y]])/days_in_month) * 1000, # convert to ML/d from GL/m
+           {{x}} := (as.numeric(.data[[x]]))*1000, # convert to ML/d from GL/d
            {{group}} := as.factor(.data[[group]])) %>% 
-    select(-days_in_month)
+    select(-days_in_month) 
+  
+  # if there is x% error in losses
+  obs_sd <- mean(model_loss$loss) * obs_unc
+  
+  # generate a sample to which we can fit the model based on these "obs uncertainty" samples
+  model_loss_unc <- model_loss |> 
+    reframe({{y}} := .data[[y]] + rnorm(n = 10, mean = 0, sd = obs_sd), .by = everything()) 
   
   # model_loss |> 
   #   ggplot(aes(x = qsa_flow, y = loss,colour = as.factor(month))) +
@@ -59,7 +58,7 @@ model_losses <- function(model_dat = 'R/helper_data/modelled_losses_DEW.csv',
                           x = gsub(pattern = "y", replacement = y, 
                                    x = gsub(pattern = "group", replacement = group, x = formula_use)))
   
-  L_mod <- lm(as.formula(formula_updated), data = model_loss)
+  L_mod <- lm(as.formula(formula_updated), data = model_loss_unc)
   
   return(L_mod)
 }
@@ -72,10 +71,12 @@ model_losses <- function(model_dat = 'R/helper_data/modelled_losses_DEW.csv',
 #' @param data dataframe with the column to be lagged and a datetime column, requires explicit gaps
 #' @param upstream_col column name to be used as the upstream predictor
 #' @param L_mod fitted loss model
+#' @param loss_unc Logical, include uncertainty from loss_mod
 #'
 #' @examples
 predict_downstream <- function(lag_t,
                                data, # needs a datatime column, data in ML/d, or specify units
+                               loss_unc = T,
                                upstream_col = 'QSA',
                                L_mod = L_mod) {
   
@@ -84,7 +85,11 @@ predict_downstream <- function(lag_t,
     mutate(#"{upstream_col}" := data1[upstream_col],
       month = as.factor(month(datetime)))
   
-  predicted_loss <- predict(L_mod, newdata = new_dat) 
+  if (loss_unc) {
+    predicted_loss <- predict(L_mod, newdata = new_dat) + rnorm(n = 1, mean = 0, sd = sd(L_mod$residuals))
+  } else {
+    predicted_loss <- predict(L_mod, newdata = new_dat)
+  }
   
   upstream_lagged <- data |> 
     mutate(upstream_lag = lag(.data[[upstream_col]], lag_t)) # lagged_upstream (Qup(t-T)) 
@@ -105,7 +110,8 @@ predict_downstream <- function(lag_t,
 #' @param n_members how many ensemble members to generate
 #' @param upstream_unit what are the units of upstream, default is MLd - if not it will do a conversion
 #' @param upstream_location which gauging station to use the lags of, default is QSA
-#'
+#' @param loss_unc logical, include uncertainty from L_mod
+#' 
 #' @returns forecast of inflow in MLd
 #'
 generate_flow_inflow_fc <- function(config,
@@ -113,6 +119,7 @@ generate_flow_inflow_fc <- function(config,
                                     n_members = 1, 
                                     upstream_unit = 'MLd',
                                     upstream_location = 'QSA',
+                                    loss_unc = T,
                                     L_mod) {
   # Set up
   reference_date <- as_date(config$run_config$forecast_start_datetime)
@@ -192,6 +199,7 @@ generate_flow_inflow_fc <- function(config,
     predictions <- predict_downstream(lag_t = lag_use, # need data to extend back at least this days before forecast date
                                       data = all_upstream,
                                       upstream_col = 'flow',
+                                      loss_unc = loss_unc,
                                       L_mod = L_mod) |>
       filter(datetime %in% forecast_dates$datetime) |> 
       mutate(reference_date = as_date(reference_date),
