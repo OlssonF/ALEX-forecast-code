@@ -36,9 +36,9 @@ L_mod <- model_losses(model_dat = 'R/helper_data/modelled_losses_DEW.csv',
                       x = 'loss', y = 'flow', group = 'month')
 
 hist_interp_W_flow <- predict_downstream(lag_t = 14, 
-                                                data = hist_interp_upstream_flow, 
-                                                upstream_col = 'flow',
-                                                L_mod = L_mod) |> 
+                                         data = hist_interp_upstream_flow, 
+                                         upstream_col = 'flow',
+                                         L_mod = L_mod) |> 
   mutate(prediction = prediction / 86.4,
          variable = 'FLOW', 
          site_id = site_id, 
@@ -85,7 +85,8 @@ temp_fc <- generate_temp_inflow_fc(config)
 
 
 # Make sure the units for the loss data are the same as for the prediction
-L_mod <- model_losses(model_dat = 'R/helper_data/modelled_losses_DEW.csv', 
+L_mod <- model_losses(model_dat = 'R/helper_data/modelled_losses_DEW.csv',
+                      obs_unc = 0.05,
                       # data are losses in GL/m at different rates of entitlement flow (GL/d)
                       formula_use = "y ~ x + group", 
                       y = 'loss', x = 'flow', group = 'month')
@@ -93,15 +94,16 @@ L_mod <- model_losses(model_dat = 'R/helper_data/modelled_losses_DEW.csv',
 
 flow_fc <- generate_flow_inflow_fc(config = config, 
                                    upstream_unit = 'MLd',
-                                   lag_t = c(9:14), 
-                                   n_members = 10,
+                                   lag_t = 9:14, # this is the range of lags that are applied in the model 
+                                   loss_unc = T, # is there uncertainty in the loss model? if TRUE, applies sd in L_mod residuals
+                                   n_members = 10, # same as the salt and temp forecasts
                                    upstream_location = 'QSA',
                                    L_mod = L_mod) |> 
   mutate(#parameter = 0,
-         #convert from ML/d to m3/s
-         prediction = prediction/86.4) #|> 
-  # make sure it has the same number of parameter values as the other forecasts!!
-  reframe(parameter=unique(salt_fc$parameter), .by = everything())
+    #convert from ML/d to m3/s
+    prediction = prediction/86.4) 
+# make sure it has the same number of parameter values as the other forecasts!!
+# reframe(parameter=unique(salt_fc$parameter), .by = everything())
 
 
 inflow_fc <- bind_rows(flow_fc, temp_fc, salt_fc) |> 
