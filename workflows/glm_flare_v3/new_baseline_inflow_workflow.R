@@ -78,15 +78,24 @@ model_id <- 'combined_inflows'
 site_id <- 'ALEX'
 reference_date <- as_date(config$run_config$forecast_start_datetime)
 horizon <- config$run_config$forecast_horizon
+ens_members <- config$da_setup$ensemble_size
 
-salt_fc <- generate_salt_inflow_fc(config)
+salt_fc <- generate_salt_inflow_fc(config) |> 
+  # make sure it has the same number of parameter values as the other forecasts!!
+  reframe(parameter2 = 0:6, .by = everything()) |>
+  mutate(parameter = (parameter2 + parameter * 7)) |> 
+  select(-parameter2)
 
-temp_fc <- generate_temp_inflow_fc(config)
+temp_fc <- generate_temp_inflow_fc(config) |> 
+  # make sure it has the same number of parameter values as the other forecasts!!
+  reframe(parameter2 = 0:6, .by = everything()) |>
+  mutate(parameter = (parameter2 + parameter * 7)) |> 
+  select(-parameter2)
 
 
 # Make sure the units for the loss data are the same as for the prediction
 L_mod <- model_losses(model_dat = 'R/helper_data/modelled_losses_DEW.csv',
-                      obs_unc = 0.05,
+                      obs_unc = 0,
                       # data are losses in GL/m at different rates of entitlement flow (GL/d)
                       formula_use = "y ~ x + group", 
                       y = 'loss', x = 'flow', group = 'month')
@@ -96,7 +105,7 @@ flow_fc <- generate_flow_inflow_fc(config = config,
                                    upstream_unit = 'MLd',
                                    lag_t = 9:14, # this is the range of lags that are applied in the model 
                                    loss_unc = T, # is there uncertainty in the loss model? if TRUE, applies sd in L_mod residuals
-                                   n_members = 10, # same as the salt and temp forecasts
+                                   n_members = config$da_setup$ensemble_size, # same as the salt and temp forecasts
                                    upstream_location = 'QSA',
                                    L_mod = L_mod) |> 
   mutate(#parameter = 0,
