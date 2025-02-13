@@ -26,7 +26,7 @@ model_losses <- function(model_dat = 'R/helper_data/modelled_losses_DEW.csv',
                          y = 'loss', x = 'QSA', group = 'month') {
   model_loss <- 
     read_csv(model_dat, show_col_types = F) |> 
-    mutate(month = match(month, month)) |> 
+    mutate(month = match(month, month.name)) |> 
     pivot_longer(starts_with('GLd_'), 
                  names_to = x,
                  values_to = y,
