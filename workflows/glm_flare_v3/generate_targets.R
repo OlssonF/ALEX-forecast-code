@@ -128,7 +128,9 @@ download.file(url = paste0("https://water.data.sa.gov.au/Export/DataSet?DataSet=
 
 wind_velocity_obs <- read_csv('data_raw/wind_velocity_obs.csv',skip=1) |> 
   rename(datetime = `Timestamp (UTC+09:30)`, value = `Value (m/s)`, code = `Grade Code`) |> 
-  mutate(datetime = lubridate::force_tz(datetime, tzone = "Australia/Adelaide"))
+  mutate(datetime = lubridate::force_tz(datetime, tzone = "Australia/Adelaide"),
+         variable = 'wind_velocity') |>
+  select(-code)
 
 # wind direction
 download.file(url = paste0("https://water.data.sa.gov.au/Export/DataSet?DataSet=Wind%20Dir.Telem%40A4260603&Calendar=CALENDARYEAR&DateRange=Days30&UnitID=52&Conversion=Instantaneous&IntervalPoints=PointsAsRecorded&ApprovalLevels=False&Qualifiers=False&Step=1&ExportFormat=csv&Compressed=true&RoundData=True&GradeCodes=True&InterpolationTypes=False&Timezone=9.5&_=1733428211983"),
@@ -136,7 +138,9 @@ download.file(url = paste0("https://water.data.sa.gov.au/Export/DataSet?DataSet=
 
 wind_dir_obs <- read_csv('data_raw/wind_direction_obs.csv', skip=1) |> 
   rename(datetime = `Timestamp (UTC+09:30)`, value = `Value (deg)`, code = `Grade Code`) |> 
-  mutate(datetime = lubridate::force_tz(datetime, tzone = "Australia/Adelaide"))
+  mutate(datetime = lubridate::force_tz(datetime, tzone = "Australia/Adelaide"),
+         variable = 'wind_direction') |>
+  select(-code)
 
 cleaned_wind_file <- file.path(config$file_path$qaqc_data_directory, paste0(config$location$site_id, "-targets-met.csv"))
 
