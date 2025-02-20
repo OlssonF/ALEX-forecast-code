@@ -30,10 +30,12 @@ hist_interp_upstream_flow <- hist_interp_inflow |>
   rename(flow = prediction)
 
 # Make sure the units for the loss data are the same as for the prediction
-L_mod <- model_losses(model_dat = 'R/helper_data/modelled_losses_DEW.csv', 
+L_mod <- model_losses(model_dat = 'R/helper_data/modelled_losses_DEW.csv',
+                      obs_unc = 0,
                       # data are losses in GL/m at different rates of entitlement flow (GL/d)
-                      formula_use = "x ~ y + group", 
-                      x = 'loss', y = 'flow', group = 'month')
+                      formula_use = "y ~ x + group", 
+                      y = 'loss', x = 'flow', group = 'month')
+
 
 hist_interp_W_flow <- predict_downstream(lag_t = 14, 
                                          data = hist_interp_upstream_flow, 
@@ -160,15 +162,17 @@ future_outflow_RW <- hist_interp_outflow |>
   fabletools::model(RW = fable::RW(box_cox(observation, 0.3))) |>  
   
   # generate forecast of specific horizon with 31 parameters
-  fabletools::generate(h = 30, times = 31, bootstrap = T) |> 
+  fabletools::generate(h = 30, times = config$da_setup$ensemble_size, bootstrap = T) |> 
   as_tibble() |> 
   
   rename(parameter = .rep,
          prediction = .sim) |> 
   mutate(reference_datetime = as_date(reference_date),
          model_id = "persistenceRW",
+         parameter = as.numeric(parameter) - 1,
          flow_number = 1,
          prediction = ifelse(prediction < 0, 0, prediction)) |> 
+  arrange(datetime, parameter) |> 
   select(-.model)
 
 arrow::write_dataset(future_outflow_RW,
