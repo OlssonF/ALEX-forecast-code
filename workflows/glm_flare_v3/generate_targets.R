@@ -142,11 +142,11 @@ wind_dir_obs <- read_csv('wind_direction_obs.csv', skip=1) |>
          variable = 'wind_direction') |>
   select(-code)
 
-cleaned_wind_file <- file.path(config$file_path$qaqc_data_directory, paste0(config$location$site_id, "-targets-met.csv"))
+cleaned_met_file <- file.path(config$file_path$qaqc_data_directory, paste0(config$location$site_id, "-targets-met.csv"))
 
 met_obs <- dplyr::bind_rows(wind_velocity_obs, wind_dir_obs) 
   
-write_csv(met_obs)
+write_csv(met_obs, cleaned_met_file)
 
 # Individual barrage flows
 library(httr)
