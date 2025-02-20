@@ -31,7 +31,7 @@ message("Successfully generated targets")
 
 FLAREr:::put_targets(site_id =  config$location$site_id,
                      cleaned_insitu_file,
-                     cleaned_met_file = NA,
+                     cleaned_met_file,
                      cleaned_inflow_file,
                      use_s3 = config$run_config$use_s3,
                      config = config)
