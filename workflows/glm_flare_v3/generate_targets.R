@@ -119,6 +119,38 @@ readr::read_csv(file.path(lake_directory, "data_raw", "current_outflow.csv"),
   write_csv(cleaned_outflow_file)
 
 
+##=========================================##
+## Met Data 
+
+# wind speed
+download.file(url = paste0("https://water.data.sa.gov.au/Export/DataSet?DataSet=Wind%20Vel.Best%20Available--Continuous%40A4260603&Calendar=CALENDARYEAR&DateRange=Days30&UnitID=185&Conversion=Instantaneous&IntervalPoints=PointsAsRecorded&ApprovalLevels=False&Qualifiers=False&Step=1&ExportFormat=csv&Compressed=true&RoundData=True&GradeCodes=True&InterpolationTypes=False&Timezone=9.5&_=1733427930976"),
+              destfile = file.path(lake_directory,"data_raw","wind_velocity_obs.csv"))
+
+wind_velocity_obs <- read_csv('wind_velocity_obs.csv',skip=1) |> 
+  rename(datetime = `Timestamp (UTC+09:30)`, value = `Value (m/s)`, code = `Grade Code`) |> 
+  mutate(datetime = lubridate::force_tz(datetime, tzone = "Australia/Adelaide"),
+         variable = 'wind_velocity') |>
+  select(-code)
+
+# wind direction
+download.file(url = paste0("https://water.data.sa.gov.au/Export/DataSet?DataSet=Wind%20Dir.Telem%40A4260603&Calendar=CALENDARYEAR&DateRange=Days30&UnitID=52&Conversion=Instantaneous&IntervalPoints=PointsAsRecorded&ApprovalLevels=False&Qualifiers=False&Step=1&ExportFormat=csv&Compressed=true&RoundData=True&GradeCodes=True&InterpolationTypes=False&Timezone=9.5&_=1733428211983"),
+              destfile = file.path(lake_directory,"data_raw","wind_direction_obs.csv"))
+
+wind_dir_obs <- read_csv('wind_direction_obs.csv', skip=1) |> 
+  rename(datetime = `Timestamp (UTC+09:30)`, value = `Value (deg)`, code = `Grade Code`) |> 
+  mutate(datetime = lubridate::force_tz(datetime, tzone = "Australia/Adelaide"),
+         variable = 'wind_direction') |>
+  select(-code)
+
+cleaned_met_file <- file.path(config$file_path$qaqc_data_directory, paste0(config$location$site_id, "-targets-met.csv"))
+
+met_obs <- dplyr::bind_rows(wind_velocity_obs, wind_dir_obs) |> 
+  rename(observation = value) |> 
+  mutate(site_id = 'ALEX',
+         inflow_name = NA)
+  
+write_csv(met_obs, cleaned_met_file)
+
 # Individual barrage flows
 library(httr)
 library(jsonlite)

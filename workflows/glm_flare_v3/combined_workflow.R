@@ -31,7 +31,7 @@ message("Successfully generated targets")
 
 FLAREr:::put_targets(site_id =  config$location$site_id,
                      cleaned_insitu_file,
-                     cleaned_met_file = NA,
+                     cleaned_met_file,
                      cleaned_inflow_file,
                      use_s3 = config$run_config$use_s3,
                      config = config)
@@ -97,27 +97,7 @@ while(noaa_ready){
                                            endpoint = config$s3$scores$endpoint,
                                            local_directory = './ALEX-forecast-code/scores/ALEX',
                                            variable_types = c("state","parameter"))
-  
-  forecast_start_datetime <- lubridate::as_datetime(config$run_config$forecast_start_datetime) + lubridate::days(1)
-  start_datetime <- lubridate::as_datetime(config$run_config$forecast_start_datetime) - lubridate::days(1)
-  restart_file <- paste0(config$location$site_id,"-", (lubridate::as_date(forecast_start_datetime)- days(1)), "-",config$run_config$sim_name ,".nc")
-  
-  FLAREr:::update_run_config(lake_directory = lake_directory,
-                             configure_run_file = configure_run_file,
-                             restart_file = restart_file,
-                             start_datetime = start_datetime,
-                             end_datetime = NA,
-                             forecast_start_datetime = forecast_start_datetime,
-                             forecast_horizon = config$run_config$forecast_horizon,
-                             sim_name = config$run_config$sim_name,
-                             site_id = config$location$site_id,
-                             configure_flare = config$run_config$configure_flare,
-                             configure_obs = config$run_config$configure_obs,
-                             use_s3 = config$run_config$use_s3,
-                             bucket = config$s3$restart$bucket,
-                             endpoint = config$s3$restart$endpoint,
-                             use_https = TRUE)
-  
+   
   forecast_start_datetime <- lubridate::as_datetime(config$run_config$forecast_start_datetime) + lubridate::days(1)
   start_datetime <- lubridate::as_datetime(config$run_config$forecast_start_datetime) - lubridate::days(5) ## SET LONGER LOOK BACK FOR DATA
   restart_file <- paste0(config$location$site_id,"-", (lubridate::as_date(forecast_start_datetime)- days(1)), "-",config$run_config$sim_name ,".nc")
