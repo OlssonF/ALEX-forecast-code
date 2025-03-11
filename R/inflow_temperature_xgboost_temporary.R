@@ -218,5 +218,19 @@ generate_temp_inflow_fc <- function(config,
     select(any_of(c('datetime', 'prediction', 'reference_date', 
                     'model_id', 'variable', 'flow_number', 'parameter')))
   
+  # are additional ensemble members needed?
+  current_ens <- temp_forecast |> distinct(parameter) |> pull() |> length() # how many are there?
+  target_ens <- config$da_setup$ensemble_size # how many are needed
+  copy_n_ens <- ceiling(target_ens/current_ens) # makes sure it is an integer!
+  
+  
+  temp_fc <- temp_fc |> 
+    # make sure it has the same number of parameter values as the other forecasts!!
+    reframe(parameter2 = 0:(copy_n_ens-1), .by = everything()) |>
+    mutate(parameter = (parameter2 + parameter * copy_n_ens)) |> 
+    select(-parameter2) |> 
+    # in case there are now too many
+    filter(parameter %in% 0:(target_ens-1))
+  
   return(temp_fc)
 }
