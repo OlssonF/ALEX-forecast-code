@@ -18,6 +18,7 @@ library(fable)
 #' @param y response
 #' @param obs_unc amount of obs uncertainty, applied as a percent of the mean loss 
 #' @param group grouping var, Month probably
+#' @return fitted loss model
 
 model_losses <- function(model_dat = 'R/helper_data/modelled_losses_DEW.csv', 
                          # data used to fit model, in GL/m
@@ -63,22 +64,72 @@ model_losses <- function(model_dat = 'R/helper_data/modelled_losses_DEW.csv',
   return(L_mod)
 }
 
+
+#' Fit a travel time model from Source data
+#'
+#' @param model_dat where are the helper data from Source
+#' @param obs_unc how much obs uncertainty
+#' @param formula_use what is the generic formula (can include x, y), different forms of a model to be converted
+#' @param x predictor
+#' @param y response
+#'
+#' @return fitted travel time model
+#' 
+model_traveltime <- function(model_dat = 'R/helper_data/travel_times.csv', 
+                             # data used to fit model, in ML/d
+                             obs_unc = 0, # how much obs uncertainty (proportion of total)
+                             formula_use = 'y ~ poly(x, 3)',
+                             y = 'travel_time', x = 'flow') {
+  
+  model_tt <- 
+    read_csv(model_dat, show_col_types = F) |> 
+    rename(flow = contains('_MLd'))
+  
+  # if there is x% error in losses
+  obs_sd <- mean(model_tt$travel_time) * obs_unc
+  
+  # generate a sample to which we can fit the model based on these "obs uncertainty" samples
+  model_tt_unc <- model_tt |> 
+    reframe({{y}} := .data[[y]] + rnorm(n = 10, mean = 0, sd = obs_sd), .by = everything()) 
+  
+  # model_tt_unc |>
+  #   ggplot(aes(x = flow_MLd, y = travel_time)) +
+  #   geom_point() +
+  #   geom_smooth(method = 'lm', formula = y ~ poly(x, 4, raw=TRUE))
+  
+  # # fit model with different polynomials
+  # anova(lm(travel_time ~ poly(flow_MLd, 3), data = model_tt),
+  #       lm(travel_time ~ poly(flow_MLd, 4), data = model_tt))
+  
+  # 4th order no better, stick with cubic
+  formula_updated <- gsub(pattern = "x", replacement = x, 
+                          x = gsub(pattern = "^y", replacement = y, x = formula_use))
+  
+  TT_mod <- lm(as.formula(formula_updated), data = model_tt_unc)
+  
+}
+
+
 #' predict_downstream
 #'
 #' @returns dataframe with lagged predictors
 #'
-#' @param lag_t travel time or lag to be applied (T)
 #' @param data dataframe with the column to be lagged and a datetime column, requires explicit gaps
 #' @param upstream_col column name to be used as the upstream predictor
 #' @param L_mod fitted loss model
 #' @param loss_unc Logical, include uncertainty from loss_mod
+#' @param forecast_dates 
+#' @param tt_unc 
+#' @param TT_mod 
 #'
 #' @examples
-predict_downstream <- function(lag_t,
-                               data, # needs a datatime column, data in ML/d, or specify units
+predict_downstream <- function(data, # needs a datatime column, data in ML/d, or specify units
+                               forecast_dates,
                                loss_unc = T,
+                               tt_unc = T,
                                upstream_col = 'QSA',
-                               L_mod = L_mod) {
+                               L_mod = L_mod,
+                               TT_mod = TT_mod) {
   
   
   new_dat <- data |>
@@ -86,23 +137,43 @@ predict_downstream <- function(lag_t,
       month = as.factor(month(datetime)))
   
   if (loss_unc) {
-    predicted_loss <- predict(L_mod, newdata = new_dat) + rnorm(n = 1, mean = 0, sd = sd(L_mod$residuals))
+    predicted_loss <- predict(L_mod, newdata = new_dat) + rnorm(n = nrow(new_dat), mean = 0, sd = sd(L_mod$residuals))
   } else {
     predicted_loss <- predict(L_mod, newdata = new_dat)
   }
   
-  upstream_lagged <- data |> 
-    mutate(upstream_lag = lag(.data[[upstream_col]], lag_t)) # lagged_upstream (Qup(t-T)) 
+  if (tt_unc) {
+    predicted_tt <- as.integer(round(predict(TT_mod, newdata = new_dat) + 
+                                       rnorm(n = nrow(new_dat), mean = 0, sd = sd(TT_mod$residuals))))
+  } else {
+    predicted_tt <- as.integer(round(predict(TT_mod, newdata = new_dat)))
+    
+  }
   
-  prediction <- data |> 
-    select(datetime) |> 
-    mutate(prediction = upstream_lagged$upstream_lag - predicted_loss)  # Qdown ~ Qup(t-T) - L
+  upstream_lagged <- data |> 
+    mutate(travel_time = predicted_tt, 
+           datetime_down = datetime + days(travel_time),# on what date will this flow get downstream; lagged_upstream (Qup(t-T)), 
+           loss = predicted_loss) |> # what is the predicted loss for this flow
+    reframe(.by = datetime_down,
+            flow = mean(flow, na.rm = T),
+            loss = mean(loss, na.rm = T)) |> # takes a mean of any duplicate dates
+    full_join(forecast_dates, by = join_by(datetime_down == datetime)) |> 
+    arrange(datetime_down) |> 
+    mutate(flow = zoo::na.approx(flow),
+           loss = zoo::na.approx(loss), # interpolate missing dates
+           flow_down = flow - loss)  # what is the flow downstream  given the losses; Qdown ~ Qup(t-T) - L
+  
+  prediction <- upstream_lagged |> 
+    select(datetime_down, flow_down) |> 
+    rename(datetime = datetime_down,
+           prediction = flow_down)  |> 
+    filter(datetime %in% forecast_dates$datetime)
   
   return(prediction)
 }
 
 
-#' Title
+#' generate_flow_inflow_fc
 #'
 #' @param config FLARE config file read in
 #' @param lag_t number of days to lag the upstream value, can be a vector of possible lags or a single value 
@@ -115,19 +186,22 @@ predict_downstream <- function(lag_t,
 #' @returns forecast of inflow in MLd
 #'
 generate_flow_inflow_fc <- function(config,
-                                    lag_t,
+                                    # lag_t,
                                     n_members = 1, 
                                     upstream_unit = 'MLd',
                                     upstream_location = 'QSA',
                                     loss_unc = T,
-                                    L_mod) {
+                                    tt_unc = T,
+                                    L_mod,
+                                    TT_mod) {
   # Set up
   reference_date <- as_date(config$run_config$forecast_start_datetime)
   site_id <- config$location$site_id
   start_training <- reference_date - years(5)
   horizon <- config$run_config$forecast_horizon
   end_date <- reference_date + days(horizon)
-  upstream_start <- reference_date - days(max(lag_t) + 5) # give buffer
+  upstream_start <- reference_date - days(60) # give buffer and use to fit RW
+  
   
   # which upstream location to use
   if (!upstream_location %in% c('L1', 'QSA')) {
@@ -168,39 +242,71 @@ generate_flow_inflow_fc <- function(config,
   # Make sure the upstream_data extends as long as the forecast window - use persistence
   forecast_dates <- data.frame(datetime = seq.Date(reference_date, end_date, 'day'))
   all_upstream <- full_join(forecast_dates, upstream_MLd, by = 'datetime') |>
-    arrange(datetime) |> 
-    mutate(flow = zoo::na.locf(flow))
+    arrange(datetime) #|>
+  # mutate(flow = zoo::na.locf(flow))
   
-  # if (beyond_lag == 'ARIMA') {
-  #   
-  #   ARIMA_mod <- all_upstream |>
-  #     mutate(flow = zoo::na.approx(flow, na.rm = F, rule = 1:2, maxgap = 5)) |>
-  #     as_tsibble(index = 'datetime') |>
-  #     na.omit() |> 
-  #     model(ARIMA = ARIMA(flow))
-  #   
-  #   # calculate how long the horizon will be to estimate using the arima model
-  #   arima_horizon <- horizon - lag_t
-  #   
-  #   ARIMA_fc <- ARIMA_mod |>
-  #     forecast(h = arima_horizon) |>
-  #     mutate(parameter = 1) |> 
-  #     rename(flow = .mean) |>
-  #     as_tibble()
-  # }
+  #Try with a RW model for the end of the forecast period
+  RW_mod <- all_upstream |>
+    tsibble::as_tsibble(index = 'datetime') |>
+    tsibble::fill_gaps() |> 
+    mutate(flow = zoo::na.approx(flow, na.rm = F, rule = 1:2, maxgap = 5)) |>
+    na.omit() |>
+    model(RW = ARIMA(flow))
+  
+  # calculate how long the horizon will be to estimate using the model
+  model_horizon <- length(which(is.na(all_upstream$flow)))
+  
+  RW_fc <- RW_mod |>
+    generate(h = model_horizon, times = ens_members) |>
+    rename(flow = .sim, 
+           parameter = .rep) |>
+    as_tibble()
+  
+  # limit the flow at the border between entitlement (min) and eflow (max)
+  eflows <- read_csv('R/helper_data/eflow.csv', show_col_types = F) |> 
+    # convert to Md
+    mutate(month_days = lubridate::days_in_month(match(month, month.name)), 
+           eflow_MLd = (eflow_GLm / month_days) * 1000)
+  
+  entitlement <- read_csv('R/helper_data/entitlement_flow.csv', show_col_types = F)
+  # already in MLd
+  
+  # combine the min/max flows
+  min_max_flows <- full_join(eflows, entitlement, by = 'month') |> 
+    mutate(min = ent_MLd,
+           max = ent_MLd + eflow_MLd) |> 
+    select(month, min, max)
+  
+  # Confine the RW forecast to the min/max specified by the entitlement and eflows
+  bounded_RW_fc <- RW_fc |> 
+    mutate(month = lubridate::month(datetime, label = T, abbr = F)) |> 
+    left_join(min_max_flows, by = 'month') |>
+    # ensure forecast doesn't go above/below limits
+    mutate(flow = ifelse(flow > max, max, 
+                         ifelse(flow < min, min, flow))) |> 
+    select(datetime, parameter, flow)
   
   # Estimate the downstream flow for each ensemble member based on a randomly selected lag
   downstream_fc <- data.frame()
   
   for (m in 1:n_members) {
-    lag_use <- lag_t[sample(length(lag_t), size = 1)] # randomly select a lag from the range given
+    
+    # extract the ensemble member from the bounded RW above
+    all_upstream_m <- rows_update(all_upstream,
+                                  select(filter(bounded_RW_fc, parameter == m),
+                                         'datetime', 'flow'),
+                                  by = 'datetime')
+    
+    # lag_use <- lag_t[sample(length(lag_t), size = 1)] # randomly select a lag from the range given
     # Note: if you just do sample(lag_t, size = 1) it gives the wrong answer when the length(lag_T) == 1
     
-    predictions <- predict_downstream(lag_t = lag_use, # need data to extend back at least this days before forecast date
-                                      data = all_upstream,
+    predictions <- predict_downstream(data = all_upstream_m,
                                       upstream_col = 'flow',
                                       loss_unc = loss_unc,
-                                      L_mod = L_mod) |>
+                                      tt_unc = tt_unc,
+                                      forecast_dates = forecast_dates,
+                                      L_mod = L_mod,
+                                      TT_mod = TT_mod) |>
       filter(datetime %in% forecast_dates$datetime) |> 
       mutate(reference_date = as_date(reference_date),
              parameter = m - 1, 
@@ -214,7 +320,12 @@ generate_flow_inflow_fc <- function(config,
     downstream_fc <- bind_rows(downstream_fc, predictions)
   }
   
-  
+  # downstream_fc |> reframe(.by = datetime, q95 = quantile(prediction, 0.95),
+  #                          q5 = quantile(prediction,0.05),
+  #                          median = median(prediction)) |>
+  #   ggplot(aes(x=datetime, y=median)) +
+  #   geom_line() +
+  #   geom_ribbon(aes(ymin = q5, ymax = q95), fill = 'blue', alpha = 0.3)
   
   return(downstream_fc)
 }
