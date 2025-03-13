@@ -45,15 +45,15 @@ model_losses <- function(model_dat = 'R/helper_data/modelled_losses_DEW.csv',
   model_loss_unc <- model_loss |> 
     reframe({{y}} := .data[[y]] + rnorm(n = 10, mean = 0, sd = obs_sd), .by = everything()) 
   
-  # model_loss |> 
-  #   ggplot(aes(x = qsa_flow, y = loss,colour = as.factor(month))) +
+  # model_loss |>
+  #   ggplot(aes(x = flow, y = loss,colour = as.factor(month))) +
   #   geom_point() +
   #   geom_smooth(method = 'lm')
   
   # # fit model with and without interaction
-  # anova(lm(loss ~ qsa_flow * month, data = model_loss),
-  #       lm(loss ~ qsa_flow + month, data = model_loss))
-  # 
+  # anova(lm(loss ~ flow + month, data = model_loss),
+  #       lm(loss ~ flow * month, data = model_loss))
+
   # no interaction better
   formula_updated <- gsub(pattern = "x", replacement = x, 
                           x = gsub(pattern = "y", replacement = y, 
@@ -130,6 +130,15 @@ predict_downstream <- function(data, # needs a datatime column, data in ML/d, or
                                upstream_col = 'QSA',
                                L_mod = L_mod,
                                TT_mod = TT_mod) {
+ 
+   if (is.character(forecast_dates)) {
+    if (forecast_dates == 'historical') {
+      message('using historical time series')
+      forecast_dates <- distinct(data, datetime)
+    } else {
+      stop('If forecast dates arent specified must used `forecast_dates = historical`')
+    }
+  }
   
   
   new_dat <- data |>
@@ -159,8 +168,8 @@ predict_downstream <- function(data, # needs a datatime column, data in ML/d, or
             loss = mean(loss, na.rm = T)) |> # takes a mean of any duplicate dates
     full_join(forecast_dates, by = join_by(datetime_down == datetime)) |> 
     arrange(datetime_down) |> 
-    mutate(flow = zoo::na.approx(flow),
-           loss = zoo::na.approx(loss), # interpolate missing dates
+    mutate(flow = zoo::na.approx(flow, rule = 2),
+           loss = zoo::na.approx(loss, rule = 2), # interpolate missing dates
            flow_down = flow - loss)  # what is the flow downstream  given the losses; Qdown ~ Qup(t-T) - L
   
   prediction <- upstream_lagged |> 
