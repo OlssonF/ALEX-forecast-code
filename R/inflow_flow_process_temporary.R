@@ -258,9 +258,9 @@ generate_flow_inflow_fc <- function(config,
   RW_mod <- all_upstream |>
     tsibble::as_tsibble(index = 'datetime') |>
     tsibble::fill_gaps() |> 
-    mutate(flow = zoo::na.approx(flow, na.rm = F, rule = 1:2, maxgap = 5)) |>
+    mutate(flow = zoo::na.approx(flow, na.rm = F, rule = 2:1, maxgap = 5)) |>
     na.omit() |>
-    model(RW = ARIMA(flow))
+    model(RW = RW(flow))
   
   # calculate how long the horizon will be to estimate using the model
   model_horizon <- length(which(is.na(all_upstream$flow)))
