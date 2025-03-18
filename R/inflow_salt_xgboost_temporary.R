@@ -104,7 +104,7 @@ generate_salt_inflow_fc <- function(config,
   
   
   ## RUN PREDICTIONS
-  message('Running xgboost forecast')
+  message('running xgboost forecast')
   
   
   # Apply function for temperature variables

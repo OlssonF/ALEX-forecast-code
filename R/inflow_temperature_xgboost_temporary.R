@@ -105,7 +105,7 @@ generate_temp_inflow_fc <- function(config,
   
   
   ## RUN PREDICTIONS
-  message('Running xgboost forecast')
+  message('running xgboost forecast')
   
   # Apply function for temperature variables
   temp_training_df <- training_df |> 

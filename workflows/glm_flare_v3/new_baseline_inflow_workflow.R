@@ -8,7 +8,7 @@ source('R/inflow_temperature_xgboost_temporary.R')
 source('R/inflow_flow_process_temporary.R')
 
 site_id <- 'ALEX'
-message('Making historical flows')
+message('----Making historical inflows----')
 # ==== Historical interpolation inflows ====
 hist_interp_inflow <- interpolate_targets(targets = 'ALEX-targets-inflow.csv', 
                                           lake_directory = lake_directory,
@@ -83,7 +83,7 @@ arrow::write_dataset(hist_interp_outflow,
 
 
 # Future inflows =======
-message('running inflow models')
+message('----Making future inflows----')
 
 model_id <- 'combined_inflows'
 site_id <- 'ALEX'
@@ -91,11 +91,14 @@ reference_date <- as_date(config$run_config$forecast_start_datetime)
 horizon <- config$run_config$forecast_horizon
 ens_members <- config$da_setup$ensemble_size
 
+message('---Salt inflow forecast---')
 salt_fc <- generate_salt_inflow_fc(config) 
+message('---Temperature inflow forecast---')
 temp_fc <- generate_temp_inflow_fc(config) 
 
 
 # Make sure the units for the loss data are the same as for the prediction
+message('---Flow inflow forecast---')
 L_mod <- model_losses(model_dat = 'R/helper_data/modelled_losses_DEW.csv',
                       obs_unc = 0.05,
                       # data are losses in GL/m at different rates of entitlement flow (GL/d)
@@ -137,7 +140,7 @@ arrow::write_dataset(inflow_fc,
 
 # ==== Future outflow persistenceRW =====
 # fit the model only for the last month
-message('Making peristence outflow forecast')
+message('----Making historical outflows----')
 # Get the observations and interpolate
 hist_interp_outflow <- interpolate_targets(targets = 'ALEX-targets-outflow.csv',
                                            lake_directory = lake_directory,
@@ -156,7 +159,7 @@ forecast_info <- hist_interp_outflow  |>
   # what is the total horizon including missing days of observations up to the reference_date
   mutate(start_training = last_obs - days(60))
 
-
+message('----Making future persistence outflow----')
 future_outflow_RW <- hist_interp_outflow |> 
   # filter so we only train on observations within the last month of the last observation
   filter(datetime < reference_date,

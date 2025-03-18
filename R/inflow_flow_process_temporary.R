@@ -133,7 +133,7 @@ predict_downstream <- function(data, # needs a datatime column, data in ML/d, or
  
    if (is.character(forecast_dates)) {
     if (forecast_dates == 'historical') {
-      message('using historical time series')
+      message('Predicting downstream using historical time series')
       forecast_dates <- distinct(data, datetime)
     } else {
       stop('If forecast dates arent specified must used `forecast_dates = historical`')
@@ -213,13 +213,14 @@ generate_flow_inflow_fc <- function(config,
   
   
   # which upstream location to use
+  message('Getting upstream data')
   if (!upstream_location %in% c('L1', 'QSA')) {
     stop('must use QSA or L1')
   } else if (upstream_location == 'QSA') {
     # read in recent QSA data - this is in MLd!!!
     download_WaterDataSA <- paste0("https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=",
                                    upstream_start, "%2000%3A00&EndTime=", reference_date, "%2000%3A00&TimeZone=9.5&Calendar=CALENDARYEAR&Interval=PointsAsRecorded&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Discharge.Master--Daily%20Calculation--ML%2Fday%40A4261001&Datasets[0].Calculation=Instantaneous&Datasets[0].UnitId=241&_=1738250581759")
-    download.file(download_WaterDataSA, destfile = 'data_raw/upstream.csv')
+    download.file(download_WaterDataSA, destfile = 'data_raw/upstream.csv', quiet = T)
     upstream_MLd <- read_csv('data_raw/upstream.csv', show_col_types = F,
                              skip = 5, col_names = c('datetime', 'flow')) |> 
       mutate(datetime = ymd(format(datetime, "%Y-%m-%d")))
@@ -227,7 +228,7 @@ generate_flow_inflow_fc <- function(config,
     # read in recent L1 data - this is in MLd!!!
     download_WaterDataSA <- paste0("https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=",
                                    upstream_start, "%2000%3A00&EndTime=", reference_date, "%2000%3A00&TimeZone=9.5&Calendar=CALENDARYEAR&Interval=PointsAsRecorded&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Discharge.Master--Daily%20Read--ML%2Fday%40A4260903&Datasets[0].Calculation=Instantaneous&Datasets[0].UnitId=241&_=1738251451037")
-    download.file(download_WaterDataSA, destfile = 'data_raw/upstream.csv')
+    download.file(download_WaterDataSA, destfile = 'data_raw/upstream.csv', quiet = T)
     upstream_MLd <- read_csv('data_raw/upstream.csv', show_col_types = F,
                              skip = 5, col_names = c('datetime', 'flow')) |> 
       mutate(datetime = ymd(format(datetime, "%Y-%m-%d")))
@@ -255,6 +256,7 @@ generate_flow_inflow_fc <- function(config,
   # mutate(flow = zoo::na.locf(flow))
   
   #Try with a RW model for the end of the forecast period
+  message('Fitting RW for upstream')
   RW_mod <- all_upstream |>
     tsibble::as_tsibble(index = 'datetime') |>
     tsibble::fill_gaps() |> 
@@ -298,6 +300,7 @@ generate_flow_inflow_fc <- function(config,
   # Estimate the downstream flow for each ensemble member based on a randomly selected lag
   downstream_fc <- data.frame()
   
+  message('Generating downstream predictions')
   for (m in 1:n_members) {
     
     # extract the ensemble member from the bounded RW above
