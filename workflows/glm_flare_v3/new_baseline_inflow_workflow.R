@@ -24,7 +24,7 @@ hist_interp_inflow <- interpolate_targets(targets = 'ALEX-targets-inflow.csv',
   # use only a single inflow
   filter(flow_number == 1)
 
-# These observations for flow are from the SA border - need to apply the loss model!
+# These observations for flow are from the SA border - need to apply the loss and travel time model!
 hist_interp_upstream_flow <- hist_interp_inflow |> 
   filter(variable == 'FLOW') |> 
   # make sure it's in MLd!
@@ -48,8 +48,8 @@ TT_mod <- model_traveltime(model_dat = 'R/helper_data/travel_times.csv',
 hist_interp_W_flow <- predict_downstream(data = hist_interp_upstream_flow, 
                                          forecast_dates = 'historical',
                                          upstream_col = 'flow',
-                                         L_mod = L_mod, loss_unc = F,
-                                         TT_mod = TT_mod, tt_unc = F) |> 
+                                         L_mod = L_mod, loss_unc = T,
+                                         TT_mod = TT_mod, tt_unc = T) |> 
   mutate(prediction = prediction / 86.4,
          variable = 'FLOW', 
          site_id = site_id, 
