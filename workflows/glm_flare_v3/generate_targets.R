@@ -2,6 +2,7 @@
 # water level data is height above sea level
 # height of bottom of ALEX (per glm.nml) = -5.3 m
 # In situ WQ data
+message('Get target obs')
 options(timeout=300)
 setwd('data_raw')
 download.file(url = paste0("https://water.data.sa.gov.au/Export/BulkExport?DateRange=Custom&StartTime=2020-01-01%2000%3A00&EndTime=", Sys.Date(), "%2000%3A00&TimeZone=0&Calendar=CALENDARYEAR&Interval=PointsAsRecorded&Step=1&ExportFormat=csv&TimeAligned=True&RoundData=True&IncludeGradeCodes=False&IncludeApprovalLevels=False&IncludeQualifiers=False&IncludeInterpolationTypes=False&Datasets[0].DatasetName=Lake%20Level.Best%20Available--Continuous%40A4261133&Datasets[0].Calculation=Instantaneous&Datasets[0].UnitId=82&Datasets[1].DatasetName=EC%20Corr.Best%20Available%40A4261133&Datasets[1].Calculation=Instantaneous&Datasets[1].UnitId=305&Datasets[2].DatasetName=Water%20Temp.Best%20Available--Continuous%40A4261133&Datasets[2].Calculation=Instantaneous&Datasets[2].UnitId=169&_=1711554907800"),
@@ -89,7 +90,6 @@ list.files(pattern = "current_inflow*") |>
          datetime = lubridate::as_datetime(paste(date, '00:00:00'))) |> # assigned to midnight
   select(site_id, inflow_name, datetime, variable, observation) |>
   write_csv(cleaned_inflow_file)
-
 #=========================================#
 
 # outflow observations ####
@@ -118,7 +118,6 @@ readr::read_csv(file.path(lake_directory, "data_raw", "current_outflow.csv"),
   select(site_id, datetime, variable, observation) |>
   write_csv(cleaned_outflow_file)
 
-
 ##=========================================##
 ## Met Data 
 
@@ -126,23 +125,26 @@ readr::read_csv(file.path(lake_directory, "data_raw", "current_outflow.csv"),
 download.file(url = paste0("https://water.data.sa.gov.au/Export/DataSet?DataSet=Wind%20Vel.Best%20Available--Continuous%40A4260603&Calendar=CALENDARYEAR&DateRange=Days30&UnitID=185&Conversion=Instantaneous&IntervalPoints=PointsAsRecorded&ApprovalLevels=False&Qualifiers=False&Step=1&ExportFormat=csv&Compressed=true&RoundData=True&GradeCodes=True&InterpolationTypes=False&Timezone=9.5&_=1733427930976"),
               destfile = file.path(lake_directory,"data_raw","wind_velocity_obs.csv"))
 
-wind_velocity_obs <- read_csv('wind_velocity_obs.csv',skip=1) |> 
-  rename(datetime = `Timestamp (UTC+09:30)`, value = `Value (m/s)`, code = `Grade Code`) |> 
+wind_velocity_obs <- readr::read_csv(file = file.path(lake_directory, "data_raw", "wind_velocity_obs.csv"),
+                                     skip=2, col_names =  c('datetime', 'value', 'code'), show_col_types = F) |> 
   mutate(datetime = lubridate::force_tz(datetime, tzone = "Australia/Adelaide"),
          variable = 'wind_velocity') |>
   select(-code)
 
 # wind direction
+
 download.file(url = paste0("https://water.data.sa.gov.au/Export/DataSet?DataSet=Wind%20Dir.Telem%40A4260603&Calendar=CALENDARYEAR&DateRange=Days30&UnitID=52&Conversion=Instantaneous&IntervalPoints=PointsAsRecorded&ApprovalLevels=False&Qualifiers=False&Step=1&ExportFormat=csv&Compressed=true&RoundData=True&GradeCodes=True&InterpolationTypes=False&Timezone=9.5&_=1733428211983"),
               destfile = file.path(lake_directory,"data_raw","wind_direction_obs.csv"))
 
-wind_dir_obs <- read_csv('wind_direction_obs.csv', skip=1) |> 
-  rename(datetime = `Timestamp (UTC+09:30)`, value = `Value (deg)`, code = `Grade Code`) |> 
+wind_dir_obs <- readr::read_csv(file = file.path(lake_directory, "data_raw", "wind_direction_obs.csv"), skip=2, 
+                                col_names =  c('datetime', 'value', 'code'), show_col_types = F) |> 
   mutate(datetime = lubridate::force_tz(datetime, tzone = "Australia/Adelaide"),
          variable = 'wind_direction') |>
   select(-code)
 
+
 cleaned_met_file <- file.path(config$file_path$qaqc_data_directory, paste0(config$location$site_id, "-targets-met.csv"))
+
 
 met_obs <- dplyr::bind_rows(wind_velocity_obs, wind_dir_obs) |> 
   rename(observation = value) |> 
@@ -150,62 +152,62 @@ met_obs <- dplyr::bind_rows(wind_velocity_obs, wind_dir_obs) |>
          inflow_name = NA)
   
 write_csv(met_obs, cleaned_met_file)
-
-# Individual barrage flows
-library(httr)
-library(jsonlite)
-# Requires credentials!!!
-export_url <- 'https://water.data.sa.gov.au/api/v1/export/data-set'
-
-barrage_ids <-  c('Goolwa' = 'A4261005',
-                  'Tauwitchere' = 'A4261006',
-                  'Ewe_Island' = 'A4260571',
-                  'Mundoo' = 'A4260526',
-                  'Boundary_Creek' = 'A4260570') 
-
-barrage_outflow <- NULL
-
-# skip if api credentials not set up
-if (Sys.getenv("SAWATER_API_USERNAME") != "") {
-  message('using API for barrage data')
-  for (i in 1:length(barrage_ids)) {
-    
-    if (names(barrage_ids[i]) == 'Boundary_Creek') {
-      dataset_name <- paste0( 'Discharge.Total Barrage Flow--Daily Total (ML)@', barrage_ids[i])
-    } else {
-      dataset_name <- paste0('Discharge.Total Barrage Flow--Daily Totals (ML)@', barrage_ids[i])
-    }
-    
-    
-    res <- GET(export_url, 
-               authenticate(Sys.getenv("SAWATER_API_USERNAME"),
-                            Sys.getenv("SAWATER_API_PASSWORD")), 
-               query = list(DataSet = dataset_name,
-                            StartTime = '2014-01-01 00:00:00',
-                            EndTime = '2024-12-31 00:00:00',
-                            Interval = 'Daily'))
-    
-    data_convert <- jsonlite::fromJSON(rawToChar(res$content))
-    
-    pulled_data <- data_convert$points
-    
-    barrage_outflow <- pulled_data |> 
-      mutate(outflow_name = names(barrage_ids[i]),
-             datetime = paste(as_date(as_datetime(timestamp, tz = "Australia/Adelaide")), "00:00:00"), 
-             variable = "FLOW",
-             observation = value) |> 
-      select(datetime, value, variable, outflow_name) |> 
-      bind_rows(barrage_outflow)
-    message(names(barrage_ids[i]))
-  }
-  
-  cleaned_barrages_file <- file.path(config$file_path$qaqc_data_directory, paste0(config$location$site_id, "-targets-barrages.csv"))
-  
-  write_csv(barrage_outflow, cleaned_barrages_file)
-  
-  
-} else {
-  message('skipping barrage api data, credentials missing')
-}
+message('Met done')
+# # Individual barrage flows
+# library(httr)
+# library(jsonlite)
+# # Requires credentials!!!
+# export_url <- 'https://water.data.sa.gov.au/api/v1/export/data-set'
+# 
+# barrage_ids <-  c('Goolwa' = 'A4261005',
+#                   'Tauwitchere' = 'A4261006',
+#                   'Ewe_Island' = 'A4260571',
+#                   'Mundoo' = 'A4260526',
+#                   'Boundary_Creek' = 'A4260570') 
+# 
+# barrage_outflow <- NULL
+# 
+# # skip if api credentials not set up
+# if (Sys.getenv("SAWATER_API_USERNAME") != "") {
+#   message('using API for barrage data')
+#   for (i in 1:length(barrage_ids)) {
+#     
+#     if (names(barrage_ids[i]) == 'Boundary_Creek') {
+#       dataset_name <- paste0( 'Discharge.Total Barrage Flow--Daily Total (ML)@', barrage_ids[i])
+#     } else {
+#       dataset_name <- paste0('Discharge.Total Barrage Flow--Daily Totals (ML)@', barrage_ids[i])
+#     }
+#     
+#     
+#     res <- GET(export_url, 
+#                authenticate(Sys.getenv("SAWATER_API_USERNAME"),
+#                             Sys.getenv("SAWATER_API_PASSWORD")), 
+#                query = list(DataSet = dataset_name,
+#                             StartTime = '2014-01-01 00:00:00',
+#                             EndTime = '2024-12-31 00:00:00',
+#                             Interval = 'Daily'))
+#     
+#     data_convert <- jsonlite::fromJSON(rawToChar(res$content))
+#     
+#     pulled_data <- data_convert$points
+#     
+#     barrage_outflow <- pulled_data |> 
+#       mutate(outflow_name = names(barrage_ids[i]),
+#              datetime = paste(as_date(as_datetime(timestamp, tz = "Australia/Adelaide")), "00:00:00"), 
+#              variable = "FLOW",
+#              observation = value) |> 
+#       select(datetime, value, variable, outflow_name) |> 
+#       bind_rows(barrage_outflow)
+#     message(names(barrage_ids[i]))
+#   }
+#   
+#   cleaned_barrages_file <- file.path(config$file_path$qaqc_data_directory, paste0(config$location$site_id, "-targets-barrages.csv"))
+#   
+#   write_csv(barrage_outflow, cleaned_barrages_file)
+#   
+#   
+# } else {
+#   message('skipping barrage api data, credentials missing')
+# }
 
 setwd(lake_directory)
