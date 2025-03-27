@@ -48,7 +48,7 @@ while(noaa_ready){
   config <- FLAREr::set_up_simulation(configure_run_file,lake_directory, config_set_name = config_set_name)
   
   # Generate inflow/outflows
-  source(file.path('workflows', config_set_name,'new_baseline_inflow_workflow.R')) 
+  source(file.path('workflows', config_set_name,'baseline_inflow_workflow.R')) 
   # combined flow drivers - assuming inflows lagged from upstream and persistence outflow
 
   # run FLARE forecast
@@ -73,7 +73,7 @@ while(noaa_ready){
     past_s3 <- arrow::s3_bucket(bucket = config$s3$forecasts_parquet$bucket, endpoint_override = config$s3$forecasts_parquet$endpoint, anonymous = TRUE)
     past_forecasts <- arrow::open_dataset(past_s3) |>
       dplyr::mutate(reference_date = lubridate::as_date(reference_date)) |>
-      dplyr::filter(model_id == 'glm_flare_v3',
+      dplyr::filter(model_id == config$run_config$sim_name,
                     site_id == forecast_site,
                     reference_date == past_days) |>
       dplyr::collect()
