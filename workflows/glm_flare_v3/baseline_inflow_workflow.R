@@ -3,9 +3,9 @@
 # Historical ----------------------------------
 # Generate some simple historic flows based on the targets
 source("R/interpolate_targets.R")
-source('R/inflow_salt_xgboost_temporary.R')
-source('R/inflow_temperature_xgboost_temporary.R')
-source('R/inflow_flow_process_temporary.R')
+source('R/inflow_salt_xgboost.R')
+source('R/inflow_temperature_xgboost.R')
+source('R/inflow_flow_process.R')
 
 site_id <- 'ALEX'
 message('----Making historical inflows----')
@@ -20,17 +20,18 @@ hist_interp_inflow <- interpolate_targets(targets = 'ALEX-targets-inflow.csv',
   mutate(flow_number = ifelse(inflow_name == 'murray', 1, ifelse(inflow_name == 'finnis', 2, NA)), 
          parameter = 1) |> 
   rename(prediction = observation) |> 
-  select(site_id, flow_number, datetime, variable, prediction, parameter) |> 
+  dplyr::select(any_of(c("site_id", "flow_number", "datetime", "variable", "prediction", "parameter"))) |> 
   # use only a single inflow
-  filter(flow_number == 1)
-
+  dplyr::filter(flow_number == 1)
+message('interpolated inflow')
 # These observations for flow are from the SA border - need to apply the loss and travel time model!
 hist_interp_upstream_flow <- hist_interp_inflow |> 
-  filter(variable == 'FLOW') |> 
+  dplyr::filter(variable == 'FLOW') |> 
   # make sure it's in MLd!
   # mutate(prediction = prediction * 86.4) |> 
   rename(flow = prediction)
 
+message('applying losses and travel times')
 # Make sure the units for the loss data are the same as for the prediction
 L_mod <- model_losses(model_dat = 'R/helper_data/modelled_losses_DEW.csv',
                       obs_unc = 0,
@@ -57,7 +58,7 @@ hist_interp_W_flow <- predict_downstream(data = hist_interp_upstream_flow,
          parameter = 1) # convert from ML/d to m3/s
 # combine with WQ vars
 
-hist_interp_inflow <- filter(hist_interp_inflow, variable != 'FLOW') |> 
+hist_interp_inflow <- dplyr::filter(hist_interp_inflow, variable != 'FLOW') |> 
   full_join(hist_interp_W_flow, 
             by = join_by(site_id, flow_number, datetime, variable, prediction, parameter))
 # Write the interpolated data as the historical file
@@ -152,7 +153,7 @@ hist_interp_outflow <- interpolate_targets(targets = 'ALEX-targets-outflow.csv',
 
 # When was the last observation? When to start the forecast
 forecast_info <- hist_interp_outflow  |> 
-  filter(datetime < reference_date) |> # remove observations after reference_date
+  dplyr::filter(datetime < reference_date) |> # remove observations after reference_date
   summarise(last_obs = max(datetime),
             .by = c(site_id, variable)) |> 
   mutate(horizon = as.numeric(as_date(reference_date) - as_date(last_obs) + horizon)) |> 
@@ -162,7 +163,7 @@ forecast_info <- hist_interp_outflow  |>
 message('----Making future persistence outflow----')
 future_outflow_RW <- hist_interp_outflow |> 
   # filter so we only train on observations within the last month of the last observation
-  filter(datetime < reference_date,
+  dplyr::filter(datetime < reference_date,
          datetime >= forecast_info$start_training) |>
   
   # Make the obs into a tsibble
