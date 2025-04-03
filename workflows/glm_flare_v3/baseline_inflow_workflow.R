@@ -33,7 +33,7 @@ hist_interp_upstream_flow <- hist_interp_inflow |>
 
 message('applying losses and travel times')
 # Make sure the units for the loss data are the same as for the prediction
-L_mod <- model_losses(model_dat = 'R/helper_data/modelled_losses_DEW.csv',
+L_mod <- model_losses(model_dat = 'R/helper_data/modelled_losses.csv',
                       obs_unc = 0,
                       # data are losses in GL/m at different rates of entitlement flow (GL/d)
                       formula_use = "y ~ x + group", 
@@ -93,6 +93,7 @@ horizon <- config$run_config$forecast_horizon
 ens_members <- config$da_setup$ensemble_size
 
 message('---Salt inflow forecast---')
+print(packageVersion('tidymodels'))
 salt_fc <- generate_salt_inflow_fc(config) 
 message('---Temperature inflow forecast---')
 temp_fc <- generate_temp_inflow_fc(config) 
@@ -100,7 +101,7 @@ temp_fc <- generate_temp_inflow_fc(config)
 
 # Make sure the units for the loss data are the same as for the prediction
 message('---Flow inflow forecast---')
-L_mod <- model_losses(model_dat = 'R/helper_data/modelled_losses_DEW.csv',
+L_mod <- model_losses(model_dat = 'R/helper_data/modelled_losses.csv',
                       obs_unc = 0.05,
                       # data are losses in GL/m at different rates of entitlement flow (GL/d)
                       formula_use = "y ~ x + group", 

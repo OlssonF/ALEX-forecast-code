@@ -8,7 +8,7 @@
 
 library(fable)
 
-#'model_losses(model_dat = 'DEW_data/modelled_losses_DEW.csv',
+#'model_losses(model_dat = 'DEW_data/modelled_losses.csv',
 #'             formula_use = "x ~ y + group", 
 #'             x = 'loss', y = 'QSA', group = 'month')
 #'
@@ -20,7 +20,7 @@ library(fable)
 #' @param group grouping var, Month probably
 #' @return fitted loss model
 
-model_losses <- function(model_dat = 'R/helper_data/modelled_losses_DEW.csv', 
+model_losses <- function(model_dat = 'R/helper_data/modelled_losses.csv', 
                          # data used to fit model, in GL/m
                          obs_unc = 0, # how much obs uncertainty (proportion of total)
                          formula_use = 'y ~ x + group',
