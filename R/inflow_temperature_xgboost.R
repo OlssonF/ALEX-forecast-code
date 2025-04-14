@@ -71,7 +71,7 @@ generate_temp_inflow_fc <- function(config,
     # pivot_wider(names_from = variable,
     #             values_from = observation) |> 
     dplyr::group_by(site_id, inflow_name, variable) |> 
-    dplyr::mutate(observation = imputeTS::na_interpolation(observation, yright = NA))
+    dplyr::mutate(observation = imputeTS::na_interpolation(observation))
   
   
   # Generate training df -----------
