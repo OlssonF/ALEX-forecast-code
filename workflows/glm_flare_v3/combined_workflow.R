@@ -10,8 +10,8 @@ config_set_name <- "glm_flare_v3"
 
 fresh_run <- TRUE
 
-Sys.setenv("AWS_DEFAULT_REGION" = "renc",
-           "AWS_S3_ENDPOINT" = "osn.xsede.org",
+Sys.setenv("AWS_DEFAULT_REGION" = "amnh1",
+           "AWS_S3_ENDPOINT" = "osn.mghpcc.org",
            "USE_HTTPS" = TRUE,
            'GLM_PATH' = 'GLM3r')
 
