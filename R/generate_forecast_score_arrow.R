@@ -36,10 +36,7 @@ generate_forecast_score_arrow <- function(targets_df,
     dplyr::filter(variable_type %in% variable_types) |>
     dplyr::mutate(family = as.character(family)) |>
     score4cast::crps_logs_score(targets_df, extra_groups = c('depth')) |>
-    dplyr::mutate(horizon = datetime-lubridate::as_datetime(reference_datetime)) |>
-    dplyr::mutate(horizon = as.numeric(lubridate::as.duration(horizon),
-                                       units = "seconds"),
-                  horizon = horizon / 86400)
+    dplyr::mutate(horizon = as.numeric(as_date(datetime)-lubridate::as_date(reference_datetime)))
   
   df <- df |> dplyr::mutate(reference_date = lubridate::as_date(reference_datetime)) |> as.data.frame()
   
