@@ -9,7 +9,7 @@ The datasets are:
 
 ## Modelled losses:
 
-Data were provided by DEW and comprise of the difference in flow at SA border and Wellington from a series Source model runs starting with Entitlement only (\~5 GL/d) up to 40 GL/d (regulated/within channel upper limit) in 5 GL/d steady state increments.
+Data were provided by DEW and comprise of the difference in flow at SA border and Wellington from a series Source model runs starting with Entitlement only (\~5 GL/d) up to 40 GL/d (regulated/within channel upper limit) in 5 GL/d steady state increments. Data are in GL/m.
 
 ## Travel times:
 
