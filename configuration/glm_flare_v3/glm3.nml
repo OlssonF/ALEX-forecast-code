@@ -141,13 +141,13 @@
    num_outlet     = 1
    outlet_type    = 1
    flt_off_sw     = .false.
-   outl_elvs      = 0.5
+   outl_elvs      = -1
    bsn_len_outl   = 35000    !as in morphom, estim
    bsn_wid_outl   = 40000    !as in morphom, estim
    outflow_fl     = 'outflow.csv'
-   outflow_factor = 1
+   outflow_factor = 0
    crest_width = 2000  
-   crest_factor = 0
+   crest_factor = 1
 /
 
 !-------------------------------------------------------------------------------
