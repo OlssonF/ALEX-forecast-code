@@ -50,7 +50,7 @@ while(noaa_ready){
   # Generate inflow/outflows
   source(file.path('workflows', config_set_name,'baseline_inflow_workflow.R')) 
   # combined flow drivers - assuming inflows lagged from upstream and persistence outflow
-
+  
   # run FLARE forecast
   # run for DA period --------------------------
   horizon <- config$run_config$forecast_horizon # extract the actual info from the config
@@ -86,14 +86,14 @@ while(noaa_ready){
                               configure_run_file = configure_run_file,
                               config_set_name = config_set_name)
   
-  if (use_s3 == T) {
+  if (config$run_config$use_s3 == T) {
     DA_period <- arrow::s3_bucket(bucket = file.path(config$s3$forecasts_parquet$bucket,
                                                      paste0('site_id=', config$location$site_id),
                                                      paste0('model_id=', config$run_config$sim_name),
                                                      paste0('reference_date=', gsub(" 00:00:00", "", 
                                                                                     config$run_config$forecast_start_datetime)),
                                                      "part-0.parquet"), 
-                                     endpoint_override = config$s3$forecasts_parquet$endpoint) |> 
+                                  endpoint_override = config$s3$forecasts_parquet$endpoint) |> 
       arrow::read_parquet()
   } else {
     DA_period <- arrow::read_parquet(file.path(config$file_path$forecast_output_directory,
@@ -115,11 +115,15 @@ while(noaa_ready){
   restart_directory_main <- config$file_path$restart_directory
   
   if (config$run_config$use_s3 == T) {
-    file.copy(file.path(restart_directory_main, restart_file_name),
-              file.path(restart_directory_main, restart_forecast_file_name),
-              overwrite = T)
-    FLAREr:::put_restart_file(saved_file = file.path(restart_directory_main, restart_forecast_file_name),
-                              config = config)
+    
+    copy_s3 <- aws.s3::copy_object(from_object =  restart_file_name,
+                                   to_object = restart_forecast_file_name,
+                                   from_bucket = file.path(config$s3$restart$bucket, config$location$site_id, config$run_config$sim_name),
+                                   to_bucket = file.path(config$s3$restart$bucket, config$location$site_id, config$run_config$sim_name),
+                                   region = stringr::str_split_fixed(config$s3$restart$endpoint, pattern = "\\.", n = 2)[1],
+                                   base_url = stringr::str_split_fixed(config$s3$restart$endpoint, pattern = "\\.", n = 2)[2],
+                                   use_https = as.logical(Sys.getenv("USE_HTTPS")))
+    
   } else {
     file.copy(file.path(restart_directory_main, restart_file_name),
               file.path(restart_directory_main, restart_forecast_file_name),
@@ -132,11 +136,20 @@ while(noaa_ready){
   
   restart_run_config_yaml <- yaml::read_yaml(restart_run_config)
   restart_run_config_yaml$restart_file <- restart_forecast_file_name
-  restart_run_config_yaml$start_datetime <- forecast_dates[i]
-  restart_run_config_yaml$forecast_start_datetime <- forecast_dates[i]
+  restart_run_config_yaml$start_datetime <- forecast_date
+  restart_run_config_yaml$forecast_start_datetime <- forecast_date
   restart_run_config_yaml$forecast_horizon <- horizon
   
-  yaml::write_yaml(restart_run_config_yaml, file = restart_run_config)
+  if (config$run_config$use_s3 == T) {
+    yaml::write_yaml(restart_run_config_yaml, file = restart_run_config)
+    aws.s3::put_object(file = restart_run_config,
+                       object = 'configure_run.yml', 
+                       bucket = file.path(config$s3$restart$bucket,
+                                          config$location$site_id, 
+                                          config$run_config$sim_name))
+  } else {
+    yaml::write_yaml(restart_run_config_yaml, file = restart_run_config)
+  }
   
   # 3. edit the config_flare to change parameter perturb settings 
   config_flare <- file.path(lake_directory, 'configuration', config_set_name, 'configure_flare.yml')
@@ -150,14 +163,14 @@ while(noaa_ready){
                               config_set_name = config_set_name)
   
   
-  if (use_s3 == T) {
+  if (config$run_config$use_s3 == T) {
     forecast_period <- arrow::s3_bucket(bucket = file.path(config$s3$forecasts_parquet$bucket,
-                                                     paste0('site_id=', config$location$site_id),
-                                                     paste0('model_id=', config$run_config$sim_name),
-                                                     paste0('reference_date=', gsub(" 00:00:00", "", 
-                                                                                    config$run_config$forecast_start_datetime)),
-                                                     "part-0.parquet"), 
-                                  endpoint_override = config$s3$forecasts_parquet$endpoint) |> 
+                                                           paste0('site_id=', config$location$site_id),
+                                                           paste0('model_id=', config$run_config$sim_name),
+                                                           paste0('reference_date=', gsub(" 00:00:00", "", 
+                                                                                          config$run_config$forecast_start_datetime)),
+                                                           "part-0.parquet"), 
+                                        endpoint_override = config$s3$forecasts_parquet$endpoint) |> 
       arrow::read_parquet()
   } else {
     
@@ -217,34 +230,21 @@ while(noaa_ready){
     
     dir.create(restart_directory_scenario, recursive = TRUE, showWarnings = FALSE)
     
-    
     if (config$run_config$use_s3 == T) {
-      file.copy(file.path(restart_directory_main, restart_file_name),
-                file.path(restart_directory_scenario, restart_forecast_scenario),
-                overwrite = T)
-      FLAREr:::put_restart_file(saved_file = file.path(restart_directory_scenario,
-                                                       restart_forecast_scenario),
-                                config = config)
+      restart_scenario_s3 <- aws.s3::save_object(object = restart_forecast_file_name,
+                                                 bucket = file.path(config$s3$restart$bucket,
+                                                                    config$location$site_id, 
+                                                                    'glm_flare_v3_crest'),
+                                                 file = file.path(restart_directory_scenario, restart_file_scenario),
+                                                 region = stringr::str_split_fixed(config$s3$restart$endpoint, pattern = "\\.", n = 2)[1],
+                                                 base_url = stringr::str_split_fixed(config$s3$restart$endpoint, pattern = "\\.", n = 2)[2],
+                                                 use_https = as.logical(Sys.getenv("USE_HTTPS")))
     } else {
       file.copy(file.path(restart_directory_main, restart_forecast_file_name),
                 file.path(restart_directory_scenario, restart_file_scenario),
                 overwrite = T)
       
     }
-    
-   
-    
-    nc_restart <- ncdf4::nc_open(file.path(restart_directory_scenario, restart_file_scenario), 
-                                 write = T)
-    
-    if (scenario_sim_names$dir[j] == 'up') {
-      crest_elev <- ncdf4::ncvar_get(nc_restart, 'crest_elev') + scenario_sim_names$crest_elev_change[j]
-    } else {
-      crest_elev <- ncdf4::ncvar_get(nc_restart, 'crest_elev') - scenario_sim_names$crest_elev_change[j]
-    }
-    
-    ncdf4::ncvar_put(nc_restart, varid = 'crest_elev', vals = crest_elev)
-    ncdf4::nc_close(nc_restart)
     
     # edit config_run from restart
     scenario_run_config <- gsub('crest', paste("crest", scenario_sim_names$dir[j], 
@@ -254,13 +254,13 @@ while(noaa_ready){
     
     restart_run_config_yaml$sim_name <- scenario_sim_names$sim_name[j]
     
-
+    
     FLAREr::update_run_config(lake_directory = lake_directory,
                               configure_run_file = configure_run_file,
                               restart_file = restart_file_scenario, # uses restart file from previous forecast
-                              start_datetime = forecast_dates[i],
+                              start_datetime = forecast_date,
                               end_datetime = NA,
-                              forecast_start_datetime = forecast_dates[i],
+                              forecast_start_datetime = forecast_date,
                               forecast_horizon = horizon, 
                               sim_name = scenario_sim_names$sim_name[j],
                               site_id = config$location$site_id,
@@ -276,6 +276,29 @@ while(noaa_ready){
                                         config_set_name = config_set_name,
                                         sim_name = scenario_sim_names$sim_name[j])
     
+    nc_restart <- ncdf4::nc_open(file.path(restart_directory_scenario, restart_file_scenario), 
+                                 write = T)
+    
+    if (scenario_sim_names$dir[j] == 'up') {
+      crest_elev <- ncdf4::ncvar_get(nc_restart, 'crest_elev') + scenario_sim_names$crest_elev_change[j]
+    } else {
+      crest_elev <- ncdf4::ncvar_get(nc_restart, 'crest_elev') - scenario_sim_names$crest_elev_change[j]
+    }
+    
+    ncdf4::ncvar_put(nc_restart, varid = 'crest_elev', vals = crest_elev)
+    ncdf4::nc_close(nc_restart)
+    
+    if (config$run_config$use_s3 == T) {
+      FLAREr:::put_restart_file(saved_file = file.path(restart_directory_scenario,
+                                                       restart_file_scenario),
+                                config = config)
+    }
+    
+    
+    config <- FLAREr::set_up_simulation(configure_run_file, lake_directory, 
+                                        config_set_name = config_set_name,
+                                        sim_name = scenario_sim_names$sim_name[j])
+    
     # Run FLARE for scenario forecast period
     output <- FLAREr::run_flare(lake_directory = lake_directory,
                                 configure_run_file = configure_run_file,
@@ -283,14 +306,14 @@ while(noaa_ready){
                                 sim_name = scenario_sim_names$sim_name[j])
     
     
-    if (use_s3 == T) {
+    if (config$run_config$use_s3 == T) {
       forecast_period_scenario <- arrow::s3_bucket(bucket = file.path(config$s3$forecasts_parquet$bucket,
-                                                             paste0('site_id=', config$location$site_id),
-                                                             paste0('model_id=', config$run_config$sim_name),
-                                                             paste0('reference_date=', gsub(" 00:00:00", "", 
-                                                                                            config$run_config$forecast_start_datetime)),
-                                                             "part-0.parquet"), 
-                                          endpoint_override = config$s3$forecasts_parquet$endpoint) |> 
+                                                                      paste0('site_id=', config$location$site_id),
+                                                                      paste0('model_id=', config$run_config$sim_name),
+                                                                      paste0('reference_date=', gsub(" 00:00:00", "", 
+                                                                                                     config$run_config$forecast_start_datetime)),
+                                                                      "part-0.parquet"), 
+                                                   endpoint_override = config$s3$forecasts_parquet$endpoint) |> 
         arrow::read_parquet()
     } else {
       
@@ -328,7 +351,7 @@ while(noaa_ready){
                                        "part-0.parquet"))
     }
     
-
+    
   }
   
   #-------------------------------------#
@@ -360,7 +383,7 @@ while(noaa_ready){
                                   endpoint_override = config$s3$forecasts_parquet$endpoint, anonymous = TRUE)
   forecast_df <- arrow::open_dataset(forecast_s3) |>
     dplyr::mutate(reference_date = lubridate::as_date(reference_date)) |>
-    dplyr::filter(model_id == 'glm_flare_v3',
+    dplyr::filter(model_id == 'glm_flare_v3_crest',
                   site_id == forecast_site,
                   reference_date == lubridate::as_datetime(config$run_config$forecast_start_datetime)) |>
     dplyr::collect()
@@ -397,7 +420,7 @@ while(noaa_ready){
                                            endpoint = config$s3$scores$endpoint,
                                            local_directory = './ALEX-forecast-code/scores/ALEX',
                                            variable_types = c("state","parameter"))
-   
+  
   
   #RCurl::url.exists("https://hc-ping.com/31c3e142-8f8c-42ae-9edc-d277adb94b31", timeout = 5)
   
