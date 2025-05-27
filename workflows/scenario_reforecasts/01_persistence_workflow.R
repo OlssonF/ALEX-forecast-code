@@ -1,0 +1,99 @@
+#--------------------------------------#
+## Project: ALEX-reforecasts
+## Script purpose: generate a persistenceRW null model
+## Date: 2025-04-10
+## Author: Freya Olsson
+#--------------------------------------#
+
+set.seed(100)
+readRenviron("~/.Renviron") # MUST come first
+library(tidyverse)
+library(lubridate)
+lake_directory <- here::here()
+setwd(lake_directory)
+
+source('R/generate_persistence.R')
+
+starting_index <- 1
+
+# # Generate targets
+# if (as_date(file.info('targets/ALEX/ALEX-targets-insitu.csv')$mtime) != Sys.Date()) {
+#   source(file.path('workflows/scenario_reforecasts/generate_targets_scenarios.R'))
+# }
+
+message("Successfully generated targets")
+
+
+# Set up ------------------------------
+# Reforecasts to run -----------------#
+num_forecasts <- 92
+days_between_forecasts <- 7
+forecast_horizon <- 30
+starting_date <- as_date("2023-07-01") # from the start of a water year
+all_forecast_dates <- paste(seq.Date(starting_date, by = days_between_forecasts, length.out = num_forecasts), "00:00:00")
+n_ensemble <- 217 # from config ensemble size
+# ------------------------------------#
+
+# Forecast set up
+model_id <- 'persistenceRW'
+site_id <- 'ALEX'
+
+# Run forecasts ------------------------
+for (i in starting_index:length(all_forecast_dates)) { #
+  
+  ref_date <- all_forecast_dates[i]
+  
+  message("Forecast on ", ref_date)
+  
+  persistenceRW_fc <- purrr::pmap(list(c('salt', 'temperature', 'depth'),
+                                       c(0.5, 0.5, NA)),
+                                  ~generate_baseline_persistenceRW(targets = 'ALEX-targets-insitu.csv', 
+                                                                   forecast_date = ref_date,
+                                                                   h = 30, ensemble_size = n_ensemble,
+                                                                   model_id = 'persistenceRW', site = 'ALEX',
+                                                                   var = ..1, depth = ..2)) |> 
+    list_rbind() |> 
+    mutate(reference_date = gsub(" 00:00:00", "", 
+                                 ref_date))
+  
+  # write forecasts!
+  persistenceRW_fc |> 
+    mutate(datetime = as_datetime(datetime),
+           reference_datetime = as_datetime(reference_datetime)) |> 
+    group_by(site_id, model_id, reference_date) |>
+    arrow::write_dataset(path = 'forecasts/parquet')
+}
+
+
+#----------------------------------------#
+
+# Score forecasts! -----------------------
+all_forecast_dates <- gsub(" 00:00:00", "", all_forecast_dates)
+
+forecasts_df <- arrow::open_dataset('forecasts/parquet/site_id=ALEX/model_id=persistenceRW/') |>
+  dplyr::filter(reference_date %in% all_forecast_dates) |>
+  dplyr::collect() |> 
+  mutate(variable_type = 'state', 
+         model_id = 'persistenceRW',
+         site_id = 'ALEX')
+
+source('R/generate_forecast_score_arrow.R')
+
+targets_df <- read_csv("targets/ALEX/ALEX-targets-insitu.csv",show_col_types = FALSE)
+
+for (i in 1:length(all_forecast_dates)) {
+  
+  to_score <- forecasts_df |> 
+    dplyr::filter(reference_date == all_forecast_dates[i])
+  
+  scoring <- generate_forecast_score_arrow(targets_df = targets_df,
+                                           forecast_df = to_score, 
+                                           use_s3 = FALSE,
+                                           bucket = NULL,
+                                           endpoint = NULL,
+                                           local_directory = 'scores',
+                                           variable_types = c("state"))
+  message(i , '/', length(all_forecast_dates))
+  
+}
+
