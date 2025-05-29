@@ -58,9 +58,9 @@ names(cols_mods) <- c("climatology","persistenceRW", "glm_flare_v3_crest")
 names(cols_scenarios) <- c("raise barrages", "lower barrages", 'reference')
 names(cols_flowlevels) <- c('high_flow', "normal_flow", "low_flow" )
 names(cols_inflowens) <- c('max', 'min')
-# main text figures ---------------------------------------------------
+# Main text figures ---------------------------------------------------
 
-## Observations
+# Figure 3 - Observations -------
 in-situ_obs <- read_csv('targets/ALEX/ALEX-targets-in-situ.csv') |> 
   mutate(variable = ifelse(variable == 'salt', 'in-situ salinity', 
                            ifelse(variable == 'temperature', 'in-situ temperature', variable)),
@@ -130,7 +130,7 @@ obs_plots_arranged <- ggarrange(obs_plots[[1]], obs_plots[[2]],
 ggsave(plot = obs_plots_arranged,
        filename = 'plots/ms/Figure_3.png', 
        height = 20, width = 22.5, units = 'cm') # if you change the size you will need to sort out the red labels above!
-# in-situ forecast evaluation -------------------------------------
+# Figure 4 - in-situ forecast evaluation -------------------------------------
 eval_vars <- c('temperature', 'salt', 'depth')
 eval_depths <- 0.5
 
@@ -159,7 +159,7 @@ ggsave(plot = eval_plot,
        filename = 'plots/ms/Figure_4.png', 
        height = 8, width = 18, units = 'cm')
 
-## Example forecast ---------------------------------------------------
+# Figure 5 - example forecast ---------------------------------------------------
 example_ref_date <- "2024-03-23"
 plot_vars <- c('crest_elev', 'overflow_flow', 'overflow_salt', 'salt', 'temperature', 'depth')
 plot_depths <- c(NA, 0.5)
@@ -217,7 +217,7 @@ example_fc_plot <- example_fc |>
 ggsave(plot = example_fc_plot,
        filename = 'plots/ms/Figure_5.png', 
        height = 18, width = 20.5, units = 'cm')
-# comparison of the barrage scenarios ==================
+# Figure 6 -comparison of the barrage scenarios ==================
 # on salt export
 saltexport_fc <- forecasts |> ungroup() |> 
   filter(variable %in% c('overflow_salt', 'overflow_flow'),
@@ -372,8 +372,8 @@ scenario_comp_plot <- ggpubr::ggarrange(plotlist = list(salt_scenario,depth_scen
 ggsave(plot = scenario_comp_plot,
        filename = 'plots/ms/Figure_6.png', 
        height = 20, width = 22.5, units = 'cm')
-# inflow vs outflow scenario importance ------------------------------
-# identify high/low inflow ensemble members ------------------
+# Figure 7 inflow vs outflow scenario importance ------------------------------
+# identify high/low inflow ensemble members ------------------#
 # for each reference_date find the parameters (ensemble members that are most closely related to )
 min_inflow_param <- forecasts |> ungroup() |> 
   filter(variable == 'inflow', 
@@ -403,7 +403,7 @@ flow_extreme_scenarios <- max_inflow_param |>
   bind_rows(min_inflow_param)
 #-------------------------------------------#
 
-# Filter the forecasts ----------------------- 
+# Filter the forecasts -----------------------# 
 # to just the ensemble members and scenarios of interest
 flow_extreme_fc <- forecasts |> 
   filter(variable %in% c('temperature', 'salt', 'depth'),
@@ -528,9 +528,9 @@ ggsave(plot = scenario_effect_plot,
        height = 20, width = 35, units = 'cm')
 
 
-# supplementary information figures ----------------------------------
+# Supplementary information figures ----------------------------------
 
-# raw evaluation values
+# Figure S6 - raw evaluation values -----------
 eval_vars <- c('temperature', 'salt', 'depth')
 eval_depths <- 0.5
 
@@ -553,7 +553,7 @@ scores |>
   theme(legend.position = 'top')
 
 
-# evaluate overflow/outflow -------------------------------------------
+# Figure S3 - evaluate overflow/outflow ---------------------------
 DA_period_overflow <- forecasts |>
   dplyr::filter(model_id == 'glm_flare_v3_crest',
                 datetime < as_date(reference_date),
@@ -582,7 +582,8 @@ DA_period_overflow |> ungroup() |>
   labs(y = "Discharge of flow through barrages (ML/day)", x = 'Date') +
   theme_bw()
 
-# define categories for each forecast date =====================
+# Figure S4 - high/low flow dates --------------
+# define categories for each forecast date 
 inflow_percentiles <- forecasts |> ungroup() |> 
   filter(scenario == 'reference', 
          variable == 'inflow',
@@ -624,9 +625,7 @@ inflow_flow |>
   scale_colour_manual(values = cols_flowlevels, labels = flow.labs, breaks = names(flow.labs), name = 'Flow category')
 
 
-# comparison of scenarios at different flow levels ---------------------
-
-# comparison of in-situ conditions between scenarios --------------------
+# Figure S8 - scenario differences salt and temp-----
 ggarrange(forecasts |> ungroup() |> 
             filter(variable == 'temperature',
                    depth == 0.5,
@@ -649,7 +648,7 @@ ggarrange(forecasts |> ungroup() |>
             geom_line(aes(y=median, colour = scenario))  +
             scale_y_continuous(expand = c(0.01,0)) +
             theme_bw() +
-            labs(y= "Temperature difference from\nreference (oC)", x = 'Horizon (days)') +
+            labs(y= "Temperature difference from\nreference (°C)", x = 'Horizon (days)') +
             scale_colour_manual(values = cols_scenarios) +
             scale_fill_manual(values = cols_scenarios), 
           
@@ -680,7 +679,8 @@ ggarrange(forecasts |> ungroup() |>
             scale_fill_manual(values = cols_scenarios),
           
           nrow = 2, common.legend = T)
-# scenario impacts on in-situ conditions at different flow levels
+
+# Figure S9 - scenario differences salt and tempat different flow levels -----
 # uses the flow_cats and scenarios
 ggarrange(forecasts |> ungroup() |> 
             filter(variable == 'temperature',
@@ -705,7 +705,7 @@ ggarrange(forecasts |> ungroup() |>
             geom_line(aes(y=median, colour = scenario))  +
             scale_y_continuous(expand = c(0.01,0)) +
             theme_bw() +
-            labs(y= "Temperature difference from\nreference (oC)", x = 'Horizon (days)') +
+            labs(y= "Temperature difference from\nreference (°C)", x = 'Horizon (days)') +
             facet_wrap(~flow_category, labeller = labeller(flow_category = flow.labs))+
             scale_colour_manual(values = cols_scenarios) +
             scale_fill_manual(values = cols_scenarios), 
@@ -740,7 +740,7 @@ ggarrange(forecasts |> ungroup() |>
           
           nrow = 2, common.legend = T)
 
-# evaluation by inflow conditions --------------------------
+# Figure S7 evaluation by inflow conditions ------------------
 scores |>
   filter(variable %in% eval_vars,
          depth %in% eval_depths | is.na(depth),
@@ -762,31 +762,8 @@ scores |>
   scale_colour_manual(values = cols_mods, labels = mod.labs, breaks = names(mod.labs), name = 'Forecast model')  +
   theme(legend.position = 'top')
 
-# example salt export ----------------------------------
-forecasts |> 
-  filter(reference_date == example_ref_date,
-         variable %in% c('overflow_salt', 'overflow_flow'),
-         datetime > as_date(reference_date)) |> 
-  pivot_wider(values_from = prediction, 
-              names_from = variable) |> 
-  mutate(overflow_salt_load = (overflow_salt*overflow_flow)/1000) |> # units of salt is ppt (equal to kg/m3), units of discharge m3/day, divide by 1000 = tonnes
-  group_by(model_id, reference_date, parameter) |> 
-  mutate(total_salt_export = cumsum(overflow_salt_load)) |> ungroup() |> 
-  reframe(.by = c('datetime', 'reference_date', 'scenario'),
-          quantile2.5 = quantile(total_salt_export, 0.025, na.rm = T),
-          quantile97.5 = quantile(total_salt_export, 0.975, na.rm = T),
-          median = median(total_salt_export, na.rm = T)) |> 
-  ggplot(aes(x=datetime)) +
-  geom_ribbon(aes(ymin = quantile2.5,ymax= quantile97.5,  fill = scenario),
-              alpha = 0.1)  +
-  geom_line(aes(y=median, colour = scenario), linewidth = 1.2)  +
-  # scale_x_datetime(expand = expansion(mult = c(0, 0.02))) +
-  scale_y_continuous(expand = c(0.01,0), name = "Cumulative salt export (tonnes)") +
-  theme_bw() +
-  scale_colour_manual(values = cols_scenarios) +
-  scale_fill_manual(values = cols_scenarios)
 
-# modelled inflow losses from DEW ----------------------------------
+# Figure S1 modelled losses ----------------------------------
 modelled_losses <- read_csv('R/helper_data/modelled_losses.csv')
 
 modelled_losses |> 
@@ -806,17 +783,8 @@ modelled_losses |>
   theme_bw() +
   labs(x = 'Month', y = 'Modelled losses (ML/day)')
 
-# modelled_losses |> 
-#   mutate(month = month(match(month, month.name), label = T)) |> 
-#   pivot_longer(-month, names_to = 'flow at SA border', names_prefix = 'GLd_',
-#                values_to = 'losses') |> 
-#   mutate(`flow at SA border` = as.numeric(`flow at SA border`)) |> 
-#   ggplot(aes(colour = month,
-#              y=losses, x = `flow at SA border`)) +
-#   geom_point() +
-#   geom_smooth(method = 'lm')
 
-# method for calculating the inflow/outflow sensitivity ---------------
+# Figure S5 - method for calculating the scenario/inflow effects ---------------
 
 minflow_param <- forecasts |> ungroup() |> 
   filter(variable == 'inflow') |> 
@@ -853,7 +821,7 @@ flow_extreme_fc <- forecasts |>
 
 
 
-## Step 1 -------------------
+## Step 1 -------------------#
 # identify ensemble members
 
 step1 <- forecasts |> 
@@ -871,14 +839,18 @@ step1 <- forecasts |>
              group = parameter, colour = flow_extreme, alpha = alpha, lineype = flow_extreme)) + 
   geom_line() + 
   facet_wrap(~reference_date)  +
-  scale_colour_manual(breaks = c('max', 'min'), values = cols_inflowens, na.value = 'grey60', name = 'Inflow prediction') +
-  scale_linetype_manual(breaks = c('max', 'min'), values = c('dashed', 'dotted'), na.value = 'solid', name = 'Inflow prediction') +
+  scale_colour_manual(breaks = c('max', 'min'),labels = c('maximum', 'minimum'),
+                      values = cols_inflowens, na.value = 'grey60', 
+                      name = 'Inflow prediction') +
+  scale_linetype_manual(breaks = c('max', 'min'), values = c('dashed', 'dotted'), na.value = 'solid',
+                        name = 'Inflow prediction') +
   scale_alpha_continuous(guide=FALSE) +
   theme_bw() + 
   theme(legend.position = 'top') +
-  labs(x = 'Horizon (days)', y = 'Inflow prediction (ML/day)')
+  labs(x = 'Horizon (days)', y = 'Inflow prediction (ML/day)') +
+  guides(colour = guide_legend(title.position="top", title.hjust = 0.5))
 
-## Step 2 -------------------
+## Step 2 -------------------#
 # identify in-situ predictions
 library(ggrepel)
 labels <-  c('lower_barrages' = 'a',
@@ -899,17 +871,17 @@ step2 <-
              y = prediction)) + 
   geom_line(aes(colour = scenario, linetype = flow_extreme)) + 
   facet_wrap(~reference_date)  +
-  scale_colour_manual(values = cols_scenarios, name = 'Outflow barrage scenario', 
+  scale_colour_manual(values = cols_scenarios, name = 'Outflow barrage\nscenario', 
                       labels = c('lower barrages', 'raise barrages')) +
   scale_linetype_manual(name = 'Inflow prediction', labels = c('maximum', 'minimum'),
                         values = c('dashed', 'solid')) +
   scale_alpha_continuous(guide = FALSE) +
   theme_bw()  + 
   geom_text_repel(aes(label = label), nudge_x = 0.3) +
-  labs(x = 'Horizon (days)', y = 'Temperature prediction (oC)')
+  labs(x = 'Horizon (days)', y = 'Temperature prediction (°C)')
 
 
-## Step 3 ----------------
+## Step 3 ----------------#
 
 step3_labs <- c('min' = 'Scenario effect under minimum inflow (a-b)', 
                 'max'= 'Scenario effect under maximum inflow (c-d)',
@@ -953,14 +925,13 @@ step3 <- bind_rows(flow_extreme_fc  |>
                         breaks = c('min', 'max', 'lower barrages', 'raise barrages'), 
                         labels = step3_labs) +
   theme_bw() +
-  theme() +
-  labs(y = 'Absolute difference in\nwater temperature (oC)', x = 'Horizon (days)') + 
-  guides(colour=guide_legend(nrow=2),
-         linetype=guide_legend(nrow=2))
+  labs(y = 'Absolute difference in\nwater temperature (°C)', x = 'Horizon (days)') + 
+  guides(colour=guide_legend(nrow=2, theme = theme(legend.key.spacing.x = unit(1, 'cm'))),
+         linetype=guide_legend(nrow=2, theme = theme(legend.key.spacing.x = unit(1, 'cm'))))
 
 
 
-## Step 4 ---------------------
+## Step 4 ---------------------#
 step4 <- bind_rows(flow_extreme_fc  |> 
                      filter(variable == 'temperature') |> 
                      select(reference_date, datetime, variable, prediction, scenario, flow_extreme) |> 
@@ -991,19 +962,18 @@ step4 <- bind_rows(flow_extreme_fc  |>
                         labels = step3_labs) +
   theme_bw() +
   theme(legend.position = 'right') +
-  labs(y = 'Absolute difference in\nwater temperature (oC)', x = 'Forecast generation date')
+  labs(y = 'Absolute difference in\nwater temperature (°C)', x = 'Forecast generation date')
 
 ggarrange(ggarrange(step1, step2, align = 'h', 
                     labels = c("A", "B"), 
-                    hjust = c(-4, -3.5), vjust = 6,
+                    hjust = c(-4, -3.5), vjust = 7.5,
                     font.label =  list(size = 18, color = "black", face = "bold", family = NULL)),
-          ggarrange(step3, step4, align = 'h', common.legend = T,
+          ggarrange(step3, step4, align = 'h', common.legend = T, legend = 'bottom',
                     labels = c("C", "D"), 
-                    hjust = -4, vjust = 3.5,
+                    hjust =  c(-4, -3.5), vjust = 3.5,
                     font.label =  list(size = 18, color = "black", face = "bold", family = NULL)), nrow = 2)
 
-## Second example forecast SI --------------
-## Example forecast ---------------------------------------------------
+# Figure S11 - second example forecast --------------
 example_fc_2 <- forecasts |> ungroup() |> 
   filter(reference_date %in% "2025-02-08",
          variable %in% 'depth',
@@ -1030,23 +1000,32 @@ example_fc_2 |>
          q97.5 = ifelse(datetime < as_datetime(reference_date) & scenario != "reference", NA, q97.5),
          q02.5 = ifelse(datetime < as_datetime(reference_date) & scenario != "reference", NA, q02.5)) |> 
   ggplot(aes(x=datetime, y=median)) +
-  geom_ribbon(aes(ymax = q97.5, ymin = q02.5, fill = scenario), alpha = 0.3) +
+  geom_ribbon(aes(ymax = q97.5, ymin = q02.5, fill = scenario), alpha = 0.1) +
+  geom_line(aes(y =q97.5, colour = scenario), linetype = 'dashed', alpha = 0.7) +
+  geom_line(aes(y =q02.5, colour = scenario), linetype = 'dashed', alpha =0.7) +
   geom_line(aes(colour = scenario)) +
-  facet_wrap(~reference_date, scales = 'free_y',nrow = 3) +
+  facet_wrap(~reference_date) +
   geom_vline(aes(xintercept = as_datetime("2025-02-08")), linetype = 'dashed') +
   theme_bw() +
   labs(y="Median prediction with 95% predictive intervals", x = "Date") +
   scale_colour_manual(values = cols_scenarios) +
   scale_fill_manual(values = cols_scenarios)
 
-# Data assimilation period ------------
+
+
+# Figure S2 - Spin upperiod ------------
 spinup_DA <- forecasts |>
   dplyr::filter(reference_date == ref_dates[1],
                 scenario == 'reference',
                 datetime < as_date(reference_date),
                 variable %in% c('crest_elev', 'lw_factor'))
 
-ggplot(spinup_DA) |> 
+spinup_DA |> 
   ggplot(aes(x=datetime,y=prediction,group = parameter)) +
-  geom_line() +
-  facet_wrap(~variable)
+  geom_line(alpha = 0.5) +
+  facet_wrap(~variable, nrow = 2, scales = 'free') +
+  theme_bw() +
+  labs(y = 'parameter prediction') +
+  scale_x_datetime(date_labels = '%d %b', name = 'Date')
+# Figure S10 - logistic regression -----
+# See the logistic_regression.R script for analysis and plots
