@@ -6,11 +6,13 @@ This code reproduces figures from the Lake Alexandrina scenario forecasting usin
 
 1.  Download or clone github repository to your local computer
 
-2.  Run `install_packages.R` in the `workflows/scenarios_reforecast` folder to download GLM and FLARE packages and their dependencies
+2.  Run `install_packages.R` in the `workflows/scenarios_reforecast` folder to download GLM and FLARE packages and their dependencies.
 
 3.  Run `download_forecasts_scores.R` in the `workflows/scenarios_reforecasts` folder to download forecasts and scores from Zenodo. 
 
-4.  Run `04_ManuscriptPlots.R` script in the `workflows/scenarios_reforecasts` folder to reproduce manuscript and supplemental figures
+4.  Run `03_plots.R` script in the `workflows/scenarios_reforecasts` folder to reproduce manuscript and supplemental figures. To run the logistic regression analysis the `logistic regression.R` will also need to be run.
+   
+6.  Run `04_ms_values.R` script in the `workflows/scenarios_reforecasts` folder to reproduce values that appear in the ms.
 
 # Instructions to reproduce FLARE forecasts and scores:
 
