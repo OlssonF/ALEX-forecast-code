@@ -19,6 +19,3 @@ unzip(file.path(lake_directory,"forecasts.zip"))
 download.file(url = "https://sandbox.zenodo.org/records/264318/files/targets.zip?download=1",
               destfile = file.path(lake_directory,"targets.zip"), method = "curl")
 unzip(file.path(lake_directory,"targets.zip"))
-
-
-
