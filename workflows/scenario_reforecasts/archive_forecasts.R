@@ -24,7 +24,7 @@ df <- open_dataset(s3_stage2, partitioning = c("reference_datetime","site_id")) 
          reference_datetime %in% all_forecast_dates)
 
 write_dataset(df,
-              path = file.path(lake_directory, "archive/drivers/met/gefs-v12/stage2/"),
+              path = file.path(lake_directory, "archive/drivers/drivers/met/gefs-v12/stage2/"),
               hive_style = FALSE,
               partitioning = c("reference_datetime","site_id"))
 
@@ -37,7 +37,7 @@ df <- open_dataset(s3_stage3, partitioning = c("site_id")) |>
   filter(site_id %in% site_id_list)
 
 write_dataset(df,
-              path = file.path(lake_directory, "archive/drivers/met/gefs-v12/stage3"),
+              path = file.path(lake_directory, "archive/drivers/drivers/met/gefs-v12/stage3"),
               hive_style = FALSE,
               partitioning = c("site_id"))
 
