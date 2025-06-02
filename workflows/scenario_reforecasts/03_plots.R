@@ -61,7 +61,7 @@ names(cols_inflowens) <- c('max', 'min')
 # Main text figures ---------------------------------------------------
 
 # Figure 3 - Observations -------
-in-situ_obs <- read_csv('targets/ALEX/ALEX-targets-in-situ.csv') |> 
+insitu_obs <- read_csv('targets/ALEX/ALEX-targets-insitu.csv') |> 
   mutate(variable = ifelse(variable == 'salt', 'in-situ salinity', 
                            ifelse(variable == 'temperature', 'in-situ temperature', variable)),
          observation = ifelse(variable == 'depth', observation - 5.3, observation))
@@ -76,7 +76,7 @@ outflow_obs <- read_csv('targets/ALEX/ALEX-targets-outflow.csv') |>
                            ifelse(variable == 'salt', 'outflow salt', variable)))
 
 
-all_obs <- bind_rows(in-situ_obs, inflow_obs, outflow_obs)|> 
+all_obs <- bind_rows(insitu_obs, inflow_obs, outflow_obs)|> 
   filter(between(datetime, 
                  as_datetime('2023-07-01'),
                  as_datetime('2025-05-01'))) |> 
