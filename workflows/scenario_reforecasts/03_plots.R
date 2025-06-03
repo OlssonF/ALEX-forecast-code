@@ -129,7 +129,8 @@ obs_plots_arranged <- ggarrange(obs_plots[[1]], obs_plots[[2]],
 
 ggsave(plot = obs_plots_arranged,
        filename = 'plots/ms/Figure_3.png', 
-       height = 20, width = 22.5, units = 'cm') # if you change the size you will need to sort out the red labels above!
+       height = 20, width = 22.5, units = 'cm') 
+# if you change the size you will need to sort out the red labels above!
 # Figure 4 - in-situ forecast evaluation -------------------------------------
 eval_vars <- c('temperature', 'salt', 'depth')
 eval_depths <- 0.5
@@ -427,6 +428,7 @@ group_labs <- c('min' = 'Scenario effect under minimum inflow',
 
 p1 <- flow_extreme_fc  |>
   select(reference_date, datetime, prediction, scenario, flow_extreme, variable)  |>
+  mutate(prediction = ifelse(variable == 'depth', prediction - 5.3, prediction)) |>   
   reframe(.by = c(reference_date, flow_extreme, scenario, variable), 
           med_prediction = median(prediction)) |>
   ggplot(aes(x=as_date(reference_date), y = med_prediction, colour = scenario, linetype = flow_extreme))+
@@ -518,14 +520,14 @@ p3 <-
 
 legend_plot <- get_legend(p2 + theme(legend.position = "top") + guides(colour=guide_legend(nrow=2),
                                                                        linetype=guide_legend(nrow=2)))
-scenario_effect_plot <- ggarrange(ggarrange(NULL, legend_plot, widths = c(0.8, 1), nrow = 1, ncol = 2),
-                                  ggarrange(p1, p2, p3, nrow = 1, ncol = 3, widths = c(1.3,0.9,0.7), align = 'h',
-                                            labels = c('A', 'B'), hjust = -2), 
+scenario_effect_plot <- ggarrange(ggarrange(NULL, NULL, legend_plot, widths = c(0.8, 0.1, 1), nrow = 1, ncol = 3),
+                                  ggarrange(p1, NULL, p2, p3, nrow = 1, ncol = 4, widths = c(1.3,0.1,0.9,0.7), align = 'h',
+                                            labels = c('A','', 'B', 'C'), hjust = c(-2, 0, -2, 0.25)), 
                                   nrow=2, ncol = 1, heights = c(0.1, 1))
 
 ggsave(plot = scenario_effect_plot,
        filename = 'plots/ms/Figure_7.png', 
-       height = 20, width = 35, units = 'cm')
+       height = 23, width = 40, units = 'cm')
 
 
 # Supplementary information figures ----------------------------------
@@ -636,7 +638,7 @@ ggarrange(forecasts |> ungroup() |>
                    `lower barrages` = glm_flare_v3_crest_down_0.1 - glm_flare_v3_crest)  |> 
             select(-starts_with('glm')) |> 
             pivot_longer(cols = `raise barrages`:`lower barrages`,  names_to = 'scenario', values_to = "difference") |>
-            mutate(horizon = as.numeric(datetime - as_date(reference_date)))  |> 
+            mutate(horizon = as.numeric(as_date(datetime) - as_date(reference_date)))  |> 
             reframe(.by = c('horizon', 'scenario'),
                     quantile5 = quantile(difference, 0.05, na.rm = T),
                     quantile95 = quantile(difference, 0.95, na.rm = T),
@@ -646,6 +648,8 @@ ggarrange(forecasts |> ungroup() |>
             geom_ribbon(aes(ymin = quantile5,ymax= quantile95, fill = scenario),
                         alpha = 0.1)  +
             geom_line(aes(y=median, colour = scenario))  +
+            geom_line(aes(y =quantile95, colour = scenario), linetype = 'dashed', alpha = 0.7) +
+            geom_line(aes(y =quantile5, colour = scenario), linetype = 'dashed', alpha =0.7) +
             scale_y_continuous(expand = c(0.01,0)) +
             theme_bw() +
             labs(y= "Temperature difference from\nreference (°C)", x = 'Horizon (days)') +
@@ -662,7 +666,7 @@ ggarrange(forecasts |> ungroup() |>
                    `lower barrages` = glm_flare_v3_crest_down_0.1 - glm_flare_v3_crest)  |> 
             select(-starts_with('glm')) |> 
             pivot_longer(cols = `raise barrages`:`lower barrages`,  names_to = 'scenario', values_to = "difference") |>
-            mutate(horizon = as.numeric(datetime - as_date(reference_date)))  |> 
+            mutate(horizon = as.numeric(as_date(datetime) - as_date(reference_date)))  |> 
             reframe(.by = c('horizon', 'scenario'),
                     quantile5 = quantile(difference, 0.05, na.rm = T),
                     quantile95 = quantile(difference, 0.95, na.rm = T),
@@ -671,6 +675,8 @@ ggarrange(forecasts |> ungroup() |>
             geom_hline(yintercept = 0)+
             geom_ribbon(aes(ymin = quantile5,ymax= quantile95, fill = scenario),
                         alpha = 0.1)  +
+            geom_line(aes(y =quantile95, colour = scenario), linetype = 'dashed', alpha = 0.7) +
+            geom_line(aes(y =quantile5, colour = scenario), linetype = 'dashed', alpha =0.7) +
             geom_line(aes(y=median, colour = scenario))  +
             scale_y_continuous(expand = c(0.01,0)) +
             theme_bw() +
@@ -692,7 +698,7 @@ ggarrange(forecasts |> ungroup() |>
                    `lower barrages` = glm_flare_v3_crest_down_0.1 - glm_flare_v3_crest)  |> 
             select(-starts_with('glm')) |> 
             pivot_longer(cols = `raise barrages`:`lower barrages`,  names_to = 'scenario', values_to = "difference") |>
-            mutate(horizon = as.numeric(datetime - as_date(reference_date)))  |> 
+            mutate(horizon = as.numeric(as_date(datetime) - as_date(reference_date)))  |> 
             full_join(flow_cats, by = 'reference_date') |> 
             reframe(.by = c('horizon', 'scenario', 'flow_category'),
                     quantile5 = quantile(difference, 0.05, na.rm = T),
@@ -702,6 +708,8 @@ ggarrange(forecasts |> ungroup() |>
             geom_hline(yintercept = 0)+
             geom_ribbon(aes(ymin = quantile5,ymax= quantile95, fill = scenario),
                         alpha = 0.1)  +
+            geom_line(aes(y =quantile95, colour = scenario), linetype = 'dashed', alpha = 0.7) +
+            geom_line(aes(y =quantile5, colour = scenario), linetype = 'dashed', alpha =0.7) +
             geom_line(aes(y=median, colour = scenario))  +
             scale_y_continuous(expand = c(0.01,0)) +
             theme_bw() +
@@ -720,7 +728,7 @@ ggarrange(forecasts |> ungroup() |>
                    `lower barrages` = glm_flare_v3_crest_down_0.1 - glm_flare_v3_crest)  |> 
             select(-starts_with('glm')) |> 
             pivot_longer(cols = `raise barrages`:`lower barrages`,  names_to = 'scenario', values_to = "difference") |>
-            mutate(horizon = as.numeric(datetime - as_date(reference_date)))  |> 
+            mutate(horizon = as.numeric(as_date(datetime) - as_date(reference_date)))  |> 
             full_join(flow_cats, by = 'reference_date') |> 
             reframe(.by = c('horizon', 'scenario', 'flow_category'),
                     quantile5 = quantile(difference, 0.05, na.rm = T),
@@ -730,6 +738,8 @@ ggarrange(forecasts |> ungroup() |>
             geom_hline(yintercept = 0)+
             geom_ribbon(aes(ymin = quantile5,ymax= quantile95, fill = scenario),
                         alpha = 0.1)  +
+            geom_line(aes(y =quantile95, colour = scenario), linetype = 'dashed', alpha = 0.7) +
+            geom_line(aes(y =quantile5, colour = scenario), linetype = 'dashed', alpha =0.7) +
             geom_line(aes(y=median, colour = scenario))  +
             scale_y_continuous(expand = c(0.01,0)) +
             theme_bw() +
