@@ -1,9 +1,9 @@
 restart_file: .na
-start_datetime: 2025-04-01 00:00:00
+start_datetime: 2023-04-01 00:00:00
 end_datetime: .na
-forecast_start_datetime: 2025-05-08 00:00:00
-forecast_horizon: 34
+forecast_start_datetime: 2023-07-01 00:00:00
+forecast_horizon: 30
 sim_name: glm_flare_v3_crest
 configure_flare: configure_flare.yml
 configure_obs: observation_processing.yml
-use_s3: TRUE
+use_s3: FALSE
