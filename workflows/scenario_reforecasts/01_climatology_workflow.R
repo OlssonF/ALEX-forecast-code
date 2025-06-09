@@ -16,10 +16,27 @@ source('R/generate_climatology.R')
 
 starting_index <- 1
 
-# Generate targets
-if (as_date(file.info('targets/ALEX/ALEX-targets-insitu.csv')$mtime) != Sys.Date()) {
-  source(file.path('workflows/scenario_reforecasts/generate_targets_scenarios.R'))
+
+if (starting_index == 1) {
+  config <- FLAREr::set_up_simulation(configure_run_file,lake_directory, config_set_name = config_set_name,
+                                      clean_start = T) # start a clean run with spin up
+} else {
+  config <- FLAREr::set_up_simulation(configure_run_file,lake_directory, config_set_name = config_set_name,
+                                      clean_start = F) # use restart
 }
+
+
+# Generate targets
+if (!file.exists('targets/ALEX/ALEX-targets-insitu.csv')) {
+  source(file.path('workflows/scenario_reforecasts/generate_targets_scenarios.R'))
+  
+} else {
+  if (as_date(file.info('targets/ALEX/ALEX-targets-insitu.csv')$mtime) != Sys.Date()) {
+    source(file.path('workflows/scenario_reforecasts/generate_targets_scenarios.R'))
+  }
+}
+
+
 
 message("Successfully generated targets")
 
@@ -82,7 +99,7 @@ source('R/generate_forecast_score_arrow.R')
 targets_df <- read_csv("targets/ALEX/ALEX-targets-insitu.csv",show_col_types = FALSE)
 
 for (i in 1:length(all_forecast_dates)) {
-
+  
   to_score <- forecasts_df |> 
     dplyr::filter(reference_date == all_forecast_dates[i])
   

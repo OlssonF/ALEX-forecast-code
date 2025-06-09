@@ -15,15 +15,15 @@ configure_run_file <- "configure_run.yml"
 config_set_name <- "glm_flare_v3"
 
 
-Sys.setenv("AWS_DEFAULT_REGION" = "renc",
-           "AWS_S3_ENDPOINT" = "osn.xsede.org",
+Sys.setenv("AWS_DEFAULT_REGION" = "amnh1",
+           "AWS_S3_ENDPOINT" = "osn.mghpcc.org",
            "USE_HTTPS" = TRUE,
            'GLM_PATH' = 'GLM3r')
 
 
-starting_index <- 92
+starting_index <- 1
 
-
+# check the run_config is set up correctly for these reforecasts
 if (starting_index == 1) {
   config <- FLAREr::set_up_simulation(configure_run_file,lake_directory, config_set_name = config_set_name,
                                       clean_start = T) # start a clean run with spin up
@@ -34,8 +34,13 @@ if (starting_index == 1) {
 
 
 # Generate targets
-if (as_date(file.info('targets/ALEX/ALEX-targets-insitu.csv')$mtime) != Sys.Date()) {
+if (!file.exists('targets/ALEX/ALEX-targets-insitu.csv')) {
   source(file.path('workflows/scenario_reforecasts/generate_targets_scenarios.R'))
+  
+} else {
+  if (as_date(file.info('targets/ALEX/ALEX-targets-insitu.csv')$mtime) != Sys.Date()) {
+    source(file.path('workflows/scenario_reforecasts/generate_targets_scenarios.R'))
+  }
 }
 
 message("Successfully generated targets")
