@@ -31,3 +31,15 @@ This code reproduces figures from the Lake Alexandrina scenario forecasting usin
 6. Run `03_plots.R` script in the `workflows/scenarios_reforecasts` folder to reproduce manuscript and supplemental figures. To run the logistic regression analysis the `logistic regression.R` will need to be run.  
 
 7. Run `04_ms_values.R` script in the `workflows/scenarios_reforecasts` folder to reproduce values that appear in the ms.
+
+# Instructions for reproducing using Docker
+
+1. Download and install Docker to your computer (https://www.docker.com)
+
+2. At the command line, run `docker run --rm -ti -e PASSWORD=yourpassword -p 8787:8787 olssonf/olsson_et_al_alex:latest`
+
+3. Open a webbrowser and enter `http://localhost:8787`.  You will see an Rstudio login screen.  The user name is `rstudio` and the password is `yourpassword`
+
+4. In the Rstudio session:  File -> Open project -> select ALEX-forecast-code/ALEX-forecast-code.Rproj
+
+6. Follow the instructions above for reproducing the figures or the forecasts (**note: the R packages are already installed in the Docker container so `install_packages.R` does not need to be run**)
