@@ -88,7 +88,7 @@ df_all <- open_dataset(s3_scores) |>
          model_id %in% model_id_list)
 
 write_dataset(df_all, path = file.path(lake_directory, "archive/scores/scores/"),
-              hive_style = TRUE, partitioning = c("site_id","model_id", "reference_datetime"))
+              hive_style = TRUE, partitioning = c("site_id","model_id", "reference_date"))
 
 
 setwd(file.path(lake_directory, "archive/scores"))
