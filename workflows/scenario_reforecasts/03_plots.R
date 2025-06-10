@@ -750,7 +750,7 @@ ggarrange(forecasts |> ungroup() |>
           
           nrow = 2, common.legend = T)
 
-# Figure S7 evaluation by inflow conditions ------------------
+# Figure S7 - evaluation by inflow conditions ------------------
 scores |>
   filter(variable %in% eval_vars,
          depth %in% eval_depths | is.na(depth),
@@ -773,7 +773,7 @@ scores |>
   theme(legend.position = 'top')
 
 
-# Figure S1 modelled losses ----------------------------------
+# Figure S1 - modelled losses ----------------------------------
 modelled_losses <- read_csv('R/helper_data/modelled_losses.csv')
 
 modelled_losses |> 
@@ -974,14 +974,16 @@ step4 <- bind_rows(flow_extreme_fc  |>
   theme(legend.position = 'right') +
   labs(y = 'Absolute difference in\nwater temperature (°C)', x = 'Forecast generation date')
 
-ggarrange(ggarrange(step1, step2, align = 'h', 
+Figure_s5 <- ggarrange(ggarrange(step1, step2, align = 'h', 
                     labels = c("A", "B"), 
-                    hjust = c(-4, -3.5), vjust = 7.5,
+                    hjust = c(-3.5, -3), vjust = 8,
                     font.label =  list(size = 18, color = "black", face = "bold", family = NULL)),
           ggarrange(step3, step4, align = 'h', common.legend = T, legend = 'bottom',
                     labels = c("C", "D"), 
-                    hjust =  c(-4, -3.5), vjust = 3.5,
+                    hjust =  c(-3.5, -3), vjust = 4,
                     font.label =  list(size = 18, color = "black", face = "bold", family = NULL)), nrow = 2)
+
+ggsave(Figure_s5, filename = 'plots/ms/Figure_S5.png', width = 20, height = 15, units = 'cm')
 
 # Figure S11 - second example forecast --------------
 example_fc_2 <- forecasts |> ungroup() |> 
