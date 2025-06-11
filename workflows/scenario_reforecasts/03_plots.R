@@ -439,7 +439,7 @@ p1 <- flow_extreme_fc  |>
                         breaks = c('max', 'min'), 
                         labels = c('maximum forecasted inflow', 'minimum forecasted inflow'))  +
   theme_bw(base_size = 14) +
-  theme(legend.position = 'right') +
+  theme(legend.position = 'none') +
   labs(y = 'Forecast horizon median prediction', x = 'Forecast generation date')
 
 
@@ -517,17 +517,20 @@ p3 <-
   labs(y = 'Absolute difference in prediction', x ='')
 
 
+legend_plot1 <- get_legend(p1  + theme(legend.position = 'top') +guides(colour=guide_legend(nrow=2),
+                                                                        linetype=guide_legend(nrow=2)))
+legend_plot2 <- get_legend(p2 + theme(legend.position = "top") + guides(colour=guide_legend(nrow=2),
+                                                                        linetype=guide_legend(nrow=2)))
+line <- ggplot() + annotate("segment", x = 2.5, y = 15, yend = 25) + theme_void()
 
-legend_plot <- get_legend(p2 + theme(legend.position = "top") + guides(colour=guide_legend(nrow=2),
-                                                                       linetype=guide_legend(nrow=2)))
-scenario_effect_plot <- ggarrange(ggarrange(NULL, NULL, legend_plot, widths = c(0.8, 0.1, 1), nrow = 1, ncol = 3),
-                                  ggarrange(p1, NULL, p2, p3, nrow = 1, ncol = 4, widths = c(1.3,0.1,0.9,0.7), align = 'h',
+scenario_effect_plot <- ggarrange(ggarrange(legend_plot1, NULL, legend_plot2, widths = c(0.6, 0.2, 1), nrow = 1, ncol = 3),
+                                  ggarrange(p1, NULL, p2, p3, nrow = 1, ncol = 4, widths = c(1,0.2,1,0.9), align = 'h',
                                             labels = c('A','', 'B', 'C'), hjust = c(-2, 0, -2, 0.25)), 
                                   nrow=2, ncol = 1, heights = c(0.1, 1))
 
 ggsave(plot = scenario_effect_plot,
        filename = 'plots/ms/Figure_7.png', 
-       height = 23, width = 40, units = 'cm')
+       height = 23, width = 35, units = 'cm')
 
 
 # Supplementary information figures ----------------------------------
@@ -975,13 +978,13 @@ step4 <- bind_rows(flow_extreme_fc  |>
   labs(y = 'Absolute difference in\nwater temperature (°C)', x = 'Forecast generation date')
 
 Figure_s5 <- ggarrange(ggarrange(step1, step2, align = 'h', 
-                    labels = c("A", "B"), 
-                    hjust = c(-3.5, -3), vjust = 8,
-                    font.label =  list(size = 18, color = "black", face = "bold", family = NULL)),
-          ggarrange(step3, step4, align = 'h', common.legend = T, legend = 'bottom',
-                    labels = c("C", "D"), 
-                    hjust =  c(-3.5, -3), vjust = 4,
-                    font.label =  list(size = 18, color = "black", face = "bold", family = NULL)), nrow = 2)
+                                 labels = c("A", "B"), 
+                                 hjust = c(-3.5, -3), vjust = 8,
+                                 font.label =  list(size = 18, color = "black", face = "bold", family = NULL)),
+                       ggarrange(step3, step4, align = 'h', common.legend = T, legend = 'bottom',
+                                 labels = c("C", "D"), 
+                                 hjust =  c(-3.5, -3), vjust = 4,
+                                 font.label =  list(size = 18, color = "black", face = "bold", family = NULL)), nrow = 2)
 
 ggsave(Figure_s5, filename = 'plots/ms/Figure_S5.png', width = 20, height = 15, units = 'cm')
 
