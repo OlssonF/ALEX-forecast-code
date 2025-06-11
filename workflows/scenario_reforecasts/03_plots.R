@@ -434,10 +434,12 @@ p1 <- flow_extreme_fc  |>
   ggplot(aes(x=as_date(reference_date), y = med_prediction, colour = scenario, linetype = flow_extreme))+
   geom_line() +
   facet_wrap(~variable, scales = 'free', nrow = 3, labeller = labeller(variable = var.labs)) +
-  scale_colour_manual(values = cols_scenarios, name = "") +
+  scale_colour_manual(values = cols_scenarios, name = "", 
+                      breaks = c('lower barrages', 'raise barrages'), 
+                      labels = c('Lower barrages', 'Raise barrages')) +
   scale_linetype_manual(values = c('dashed', 'solid'), name = "", 
                         breaks = c('max', 'min'), 
-                        labels = c('maximum forecasted inflow', 'minimum forecasted inflow'))  +
+                        labels = c('Maximum forecasted inflow', 'Minimum forecasted inflow'))  +
   theme_bw(base_size = 14) +
   theme(legend.position = 'none') +
   labs(y = 'Forecast horizon median prediction', x = 'Forecast generation date')
