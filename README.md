@@ -1,6 +1,6 @@
 # ALEX-forecast-code
 
-This code reproduces figures from the Lake Alexandrina scenario forecasting using the FLARE (Forecasting Lake And Reservoir Ecosystems) system in the manuscript by Olsson et al. titled "Developing scenario-based, near-term iterative forecasts to inform water management" If you have any questions, contact Freya Olsson at freyao\@vt.edu
+This code reproduces figures from the Lake Alexandrina scenario forecasting using the FLARE (Forecasting Lake And Reservoir Ecosystems) system in the manuscript by Olsson et al. titled "Developing scenario-based, near-term iterative forecasts to inform water management". If you have any questions, contact Freya Olsson at freyao\@vt.edu.
 
 # Instructions to reproduce manuscript + SI figures:
 
