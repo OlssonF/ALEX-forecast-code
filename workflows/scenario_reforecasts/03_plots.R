@@ -183,7 +183,7 @@ eval_byflow <- scores |>
 eval_plot <- 
   bind_rows(eval_all, eval_byflow) |>
   ggplot(aes(x=horizon, y=median_crps, colour = model_id)) +
-  geom_line(alpha = 0.5) +
+  # geom_line(alpha = 0.5) +
   geom_smooth(method = "gam", formula = y ~ s(x, bs = "cs"), se = F) +
   theme_bw() +
   # facet_wrap(flow_category~variable, nrow = 4,
@@ -579,22 +579,22 @@ ggsave(plot = scenario_effect_plot,
 eval_vars <- c('temperature', 'salt', 'depth')
 eval_depths <- 0.5
 
-scores |>
-  filter(variable %in% eval_vars,
-         depth %in% eval_depths | is.na(depth),
-         horizon > 0) |> 
-  mutate(horizon = as.numeric(as_date(datetime) - as_date(reference_datetime)),
-         sq_error = (median - observation)^2) |> 
-  reframe(.by = all_of(c('horizon', 'variable', 'depth', 'model_id')),
-          median_crps = median(crps, na.rm = T),
-          rmse = sqrt(mean(sq_error))) |> 
+bind_rows(eval_all, eval_byflow) |>
   ggplot(aes(x=horizon, y=median_crps, colour = model_id)) +
-  geom_line() +
+  geom_line(alpha = 0.8) +
   # geom_smooth(method = "gam", formula = y ~ s(x, bs = "cs"), se = F) +
   theme_bw() +
-  facet_wrap(~variable, nrow = 1, scales = 'free', labeller = labeller(variable = var.labs)) +
+  # facet_wrap(flow_category~variable, nrow = 4,
+  #            scales = 'free', labeller = labeller(variable = var.labs,
+  #                                                 flow_category = flow.labs)) +
+  
+  facet_nested_wrap(vars(flow_category, variable), nrow = 4,
+                    scales = 'free', 
+                    labeller = labeller(variable = var.labs, flow_category = flow.labs)) +
   labs(y = 'Median CRPS', x = "Horizon (days)") +
-  scale_colour_manual(values = cols_mods, labels = mod.labs, breaks = names(mod.labs), name = 'Forecast model') +
+  scale_colour_manual(values = cols_mods, 
+                      labels = mod.labs, 
+                      breaks = names(mod.labs), name = 'Forecast model')  +
   theme(legend.position = 'top')
 
 
