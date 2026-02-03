@@ -46,8 +46,8 @@ names(var.labs) <- c("depth", "salt", 'temperature', 'temp', 'flow', 'EC')
 mod.labs <- c("day-of-year null model", "persistence null model", "FLARE")
 names(mod.labs) <- c("climatology","persistenceRW", "glm_flare_v3_crest")
 
-flow.labs <- c("all flows", "high flow", "low flow", "normal flow")
-names(flow.labs) <- c("all", "high_flow", "low_flow", "normal_flow")
+flow.labs <- c("high flow", "low flow", "normal flow")
+names(flow.labs) <- c("high_flow", "low_flow", "normal_flow")
 
 cols_mods <- viridisLite::rocket(n=3, begin = 0.1, end = 0.6)#"#261433FF" "#8B1D5BFF" "#E83F3FFF"
 cols_scenarios <- c(viridisLite::plasma(n = 3, begin = 0.9, end = 0.7)[c(1,3)], 'grey40') # "#FCCE25FF" "#F1844BFF" "grey"
@@ -91,7 +91,7 @@ source('R/make_obs_plot.R')
 plot_vars <- c("inflow","depth", "in-situ temperature",  "barrage outflow", "salt export")
 plot_labels <- c("calculated flow\nat SA border (ML/day)", 
                  "lake level\n(m, above AHD)",
-                 "in-situ lake water temperature (C)",
+                 "in-situ lake water\ntemperature (°C)",
                  "combined barrage outflow\nfrom lake (ML/day)",
                  "salt export from lake\n(tonnes/day)")
 
@@ -100,7 +100,7 @@ obs_plots <- purrr::pmap(list(plot_vars,
                          ~make_obs_plot(df = all_obs, 
                                         plot_var = ..1, plot_label = ..2)) 
 
-salinity_obs_plot <-
+salinity_obs_plot <- 
   all_obs |> 
   filter(variable %in% c("in-situ salinity", "electrical conductivity")) |> 
   pivot_wider(names_from = variable, values_from = observation) |> 
@@ -113,11 +113,15 @@ salinity_obs_plot <-
   theme_bw() + labs(x='Date') +
   scale_y_continuous(name = "\nin-situ lake salinity (ppt)",
                      sec.axis = sec_axis(~.*1000, name=expression("electrical conductivity (" * mu ~ "S/cm)"))) +
-  theme(axis.title.y.right = element_text(color = 'red', vjust = 132, angle = 90),
-        axis.text.y.right = element_text(color = 'red', vjust = 134, hjust = 0.5, angle = 90),
+  theme(axis.title.y.left = element_text(vjust = -1),
+        axis.title.y.right = element_text(color = 'red', vjust = 131, angle = 90),
+        axis.text.y.right = element_text(color = 'red', vjust = 148, hjust = 0.5, angle = 90),
         axis.ticks.y.right = element_blank()) +
-  annotate(geom = 'segment', yend = 1, y = 0, x = as_datetime('2022-12-10'), colour = 'red') +
-  annotate(geom = 'point', y = c(0, 0.25, 0.5, 0.75, 1), x = as_datetime('2022-12-08'), shape = 45, size = 4.5, colour = 'red') +
+  annotate(geom = 'segment',
+           yend = 1, y = 0,
+           x = as_datetime('2022-12-15'), xend = as_datetime('2022-12-15'),
+           colour = 'red') +
+  annotate(geom = 'point', y = c(0, 0.25, 0.5, 0.75, 1), x = as_datetime('2022-12-11'), shape = 45, size = 4.5, colour = 'red') +
   coord_cartesian(ylim = c(0.049, 0.951), clip = "off", 
                   xlim = c(as_datetime('2023-07-01'), as_datetime('2025-05-01')))
 
@@ -135,28 +139,8 @@ ggsave(plot = obs_plots_arranged,
 eval_vars <- c('temperature', 'salt', 'depth')
 eval_depths <- 0.5
 
-# identify the different flow categories
-inflow_percentiles <- forecasts |> ungroup() |> 
-  filter(scenario == 'reference', 
-         variable == 'inflow',
-         datetime > as_date(reference_date)) |> 
-  reframe(.by = reference_date,
-          mean_inflow = mean(prediction)) |> 
-  reframe(high_flow = quantile(mean_inflow, 0.75),
-          low_flow = quantile(mean_inflow, 0.25))
-
-flow_cats <- forecasts |> ungroup() |> 
-  filter(scenario == 'reference', 
-         variable == 'inflow',
-         datetime > as_date(reference_date)) |> 
-  reframe(.by = reference_date,
-          mean_inflow = mean(prediction)) |> 
-  mutate(flow_category = ifelse(mean_inflow >= inflow_percentiles$high_flow, 'high_flow', 
-                                ifelse(mean_inflow <= inflow_percentiles$low_flow, 'low_flow',
-                                       'normal_flow')))
-
-# summarise for all flows
-eval_all <- scores |>
+eval_plot <- 
+  scores |>
   filter(variable %in% eval_vars,
          depth %in% eval_depths | is.na(depth),
          horizon > 0) |> 
@@ -164,44 +148,21 @@ eval_all <- scores |>
          sq_error = (median - observation)^2) |> 
   reframe(.by = all_of(c('horizon', 'variable', 'depth', 'model_id')),
           median_crps = median(crps, na.rm = T),
-          rmse = sqrt(mean(sq_error))) %>% 
-  mutate(flow_category = 'all')
-
-# summarise for flow categories
-eval_byflow <- scores |>
-  filter(variable %in% eval_vars,
-         depth %in% eval_depths | is.na(depth),
-         horizon > 0) |> 
-  mutate(horizon = as.numeric(as_date(datetime) - as_date(reference_datetime)),
-         sq_error = (median - observation)^2) |> 
-  full_join(flow_cats, by = 'reference_date') |> 
-  reframe(.by = all_of(c('horizon', 'variable', 'depth', 'model_id', 'flow_category')),
-          median_crps = median(crps, na.rm = T),
-          rmse = sqrt(mean(sq_error, na.rm = T)))
-
-
-eval_plot <- 
-  bind_rows(eval_all, eval_byflow) |>
-  ggplot(aes(x=horizon, y=median_crps, colour = model_id)) +
-  # geom_line(alpha = 0.5) +
+          rmse = sqrt(mean(sq_error))) |> 
+  ggplot(aes(x=horizon, y=median_crps, colour = model_id, linetype = model_id)) +
+  # geom_line() +
   geom_smooth(method = "gam", formula = y ~ s(x, bs = "cs"), se = F) +
   theme_bw() +
-  # facet_wrap(flow_category~variable, nrow = 4,
-  #            scales = 'free', labeller = labeller(variable = var.labs,
-  #                                                 flow_category = flow.labs)) +
-  
-  facet_nested_wrap(vars(flow_category, variable), nrow = 4,
-                    scales = 'free', 
-                    labeller = labeller(variable = var.labs, flow_category = flow.labs)) +
+  facet_wrap(~variable, nrow = 1, scales = 'free', labeller = labeller(variable = var.labs)) +
   labs(y = 'Median CRPS', x = "Horizon (days)") +
-  scale_colour_manual(values = cols_mods, 
-                      labels = mod.labs, 
-                      breaks = names(mod.labs), name = 'Forecast model')  +
+  scale_y_continuous(limits = ~ c(min(.x), max(.x)*1.9)) +
+  scale_colour_manual(values = cols_mods, labels = mod.labs, breaks = names(mod.labs), name = 'Forecast model') +
+  scale_linetype_manual(values = c('longdash', 'dashed', 'solid'), labels = mod.labs, breaks = names(mod.labs), name = 'Forecast model') +
   theme(legend.position = 'top')
 
 ggsave(plot = eval_plot,
        filename = 'plots/ms/Figure_4.png', 
-       height = 20, width = 18.5, units = 'cm')
+       height = 8, width = 19, units = 'cm')
 
 # Figure 5 - example forecast ---------------------------------------------------
 example_ref_date <- "2024-03-23"
@@ -579,22 +540,22 @@ ggsave(plot = scenario_effect_plot,
 eval_vars <- c('temperature', 'salt', 'depth')
 eval_depths <- 0.5
 
-bind_rows(eval_all, eval_byflow) |>
+scores |>
+  filter(variable %in% eval_vars,
+         depth %in% eval_depths | is.na(depth),
+         horizon > 0) |> 
+  mutate(horizon = as.numeric(as_date(datetime) - as_date(reference_datetime)),
+         sq_error = (median - observation)^2) |> 
+  reframe(.by = all_of(c('horizon', 'variable', 'depth', 'model_id')),
+          median_crps = median(crps, na.rm = T),
+          rmse = sqrt(mean(sq_error))) |> 
   ggplot(aes(x=horizon, y=median_crps, colour = model_id)) +
-  geom_line(alpha = 0.8) +
+  geom_line() +
   # geom_smooth(method = "gam", formula = y ~ s(x, bs = "cs"), se = F) +
   theme_bw() +
-  # facet_wrap(flow_category~variable, nrow = 4,
-  #            scales = 'free', labeller = labeller(variable = var.labs,
-  #                                                 flow_category = flow.labs)) +
-  
-  facet_nested_wrap(vars(flow_category, variable), nrow = 4,
-                    scales = 'free', 
-                    labeller = labeller(variable = var.labs, flow_category = flow.labs)) +
+  facet_wrap(~variable, nrow = 1, scales = 'free', labeller = labeller(variable = var.labs)) +
   labs(y = 'Median CRPS', x = "Horizon (days)") +
-  scale_colour_manual(values = cols_mods, 
-                      labels = mod.labs, 
-                      breaks = names(mod.labs), name = 'Forecast model')  +
+  scale_colour_manual(values = cols_mods, labels = mod.labs, breaks = names(mod.labs), name = 'Forecast model') +
   theme(legend.position = 'top')
 
 
@@ -628,7 +589,25 @@ DA_period_overflow |> ungroup() |>
   theme_bw()
 
 # Figure S4 - high/low flow dates --------------
-# uses the flow categories for each forecast date (defined in Figure 4)
+# define categories for each forecast date 
+inflow_percentiles <- forecasts |> ungroup() |> 
+  filter(scenario == 'reference', 
+         variable == 'inflow',
+         datetime > as_date(reference_date)) |> 
+  reframe(.by = reference_date,
+          mean_inflow = mean(prediction)) |> 
+  reframe(high_flow = quantile(mean_inflow, 0.75),
+          low_flow = quantile(mean_inflow, 0.25))
+
+flow_cats <- forecasts |> ungroup() |> 
+  filter(scenario == 'reference', 
+         variable == 'inflow',
+         datetime > as_date(reference_date)) |> 
+  reframe(.by = reference_date,
+          mean_inflow = mean(prediction)) |> 
+  mutate(flow_category = ifelse(mean_inflow >= inflow_percentiles$high_flow, 'high_flow', 
+                                ifelse(mean_inflow <= inflow_percentiles$low_flow, 'low_flow',
+                                       'normal_flow')))
 
 inflow_flow <- forecasts |> ungroup() |> 
   filter(variable %in% c('inflow'),
@@ -652,7 +631,7 @@ inflow_flow |>
   scale_colour_manual(values = cols_flowlevels, labels = flow.labs, breaks = names(flow.labs), name = 'Flow category')
 
 
-# Figure S7 - scenario differences salt and temp-----
+# Figure S8 - scenario differences salt and temp-----
 ggarrange(forecasts |> ungroup() |> 
             filter(variable == 'temperature',
                    depth == 0.5,
@@ -711,7 +690,7 @@ ggarrange(forecasts |> ungroup() |>
           
           nrow = 2, common.legend = T)
 
-# Figure S8 - scenario differences salt and tempat different flow levels -----
+# Figure S9 - scenario differences salt and tempat different flow levels -----
 # uses the flow_cats and scenarios
 ggarrange(forecasts |> ungroup() |> 
             filter(variable == 'temperature',
@@ -774,6 +753,28 @@ ggarrange(forecasts |> ungroup() |>
             scale_fill_manual(values = cols_scenarios),
           
           nrow = 2, common.legend = T)
+
+# Figure S7 evaluation by inflow conditions ------------------
+scores |>
+  filter(variable %in% eval_vars,
+         depth %in% eval_depths | is.na(depth),
+         horizon > 0) |> 
+  mutate(horizon = as.numeric(as_date(datetime) - as_date(reference_datetime)),
+         sq_error = (median - observation)^2) |> 
+  full_join(flow_cats, by = 'reference_date') |> 
+  reframe(.by = all_of(c('horizon', 'variable', 'depth', 'model_id', 'flow_category')),
+          median_crps = median(crps, na.rm = T),
+          rmse = sqrt(mean(sq_error, na.rm = T))) |>
+  ggplot(aes(x=horizon, y=median_crps, colour = model_id)) +
+  geom_line(alpha = 0.5) +
+  geom_smooth(method = "gam", formula = y ~ s(x, bs = "cs"), se = F) +
+  theme_bw() +
+  facet_grid(variable~flow_category, 
+             scales = 'free', labeller = labeller(variable = var.labs,
+                                                  flow_category = flow.labs)) +
+  labs(y = 'Median CRPS', x = "Horizon (days)") +
+  scale_colour_manual(values = cols_mods, labels = mod.labs, breaks = names(mod.labs), name = 'Forecast model')  +
+  theme(legend.position = 'top')
 
 
 # Figure S1 modelled losses ----------------------------------
@@ -844,8 +845,8 @@ step1 <- forecasts |>
          depth %in% c(NA, 0.5)) |> 
   full_join(flow_extreme_scenarios, by = join_by(parameter, reference_date)) |> 
   filter(reference_date == example_ref_date) |> 
-  mutate(flow_extreme = ifelse(is.na(flow_extreme), 'none', flow_extreme),
-         alpha = ifelse(flow_extreme == 'none',0.6, 1)) |> 
+  mutate(#flow_extreme = ifelse(is.na(flow_extreme), 'none', flow_extreme),
+    alpha = ifelse(flow_extreme == 'none',0.6, 1)) |> 
   
   ggplot(aes(x = as.numeric(as_date(datetime) - as_date(reference_date)), 
              y = prediction/1000,
@@ -986,7 +987,7 @@ ggarrange(ggarrange(step1, step2, align = 'h',
                     hjust =  c(-4, -3.5), vjust = 3.5,
                     font.label =  list(size = 18, color = "black", face = "bold", family = NULL)), nrow = 2)
 
-# Figure S10 - second example forecast --------------
+# Figure S11 - second example forecast --------------
 example_fc_2 <- forecasts |> ungroup() |> 
   filter(reference_date %in% "2025-02-08",
          variable %in% 'depth',
@@ -1040,5 +1041,5 @@ spinup_DA |>
   theme_bw() +
   labs(y = 'parameter prediction') +
   scale_x_datetime(date_labels = '%d %b', name = 'Date')
-# Figure S9 - logistic regression -----
+# Figure S10 - logistic regression -----
 # See the logistic_regression.R script for analysis and plots
