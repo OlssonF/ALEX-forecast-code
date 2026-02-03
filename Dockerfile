@@ -6,7 +6,7 @@ USER rstudio
 
 RUN git clone https://github.com/ecoforecastVT/ALEX-forecast-code.git /home/rstudio/ALEX-forecast-code
 
-RUN git pull
+RUN cd /home/rstudio/ALEX-forecast-code && git pull
 
 RUN Rscript /home/rstudio/ALEX-forecast-code/workflows/scenario_reforecasts/install_packages.R
 
